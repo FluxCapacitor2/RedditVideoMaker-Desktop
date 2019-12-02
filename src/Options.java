@@ -2,6 +2,7 @@ import javax.swing.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -15,6 +16,7 @@ public class Options {
     JTextField dlFolder;
     JTextField libFolder;
     JTextField outFolder;
+    JButton editManifestBtn;
 
     private ArrayList<File> backgrounds;
 
@@ -22,10 +24,13 @@ public class Options {
 
         saveAndStartBtn.addActionListener(e -> save());
         closeBtn.addActionListener(e -> close());
+        editManifestBtn.addActionListener(e -> edit());
 
         File dir = new File(Config.getLibraryFolder() + "/backgrounds/");
         if (dir.listFiles() != null) {
-            backgrounds = new ArrayList<>(Arrays.asList(dir.listFiles()));
+            File[] files = dir.listFiles();
+            if (files == null) files = new File[]{};
+            backgrounds = new ArrayList<>(Arrays.asList(files));
         } else {
             backgrounds = new ArrayList<>();
         }
@@ -107,6 +112,15 @@ public class Options {
         });
     }
 
+    private void edit() {
+        Main.configFrame.setVisible(false);
+        try {
+            new EditManifest(Main.getManifest(Main.getDLid()).comments);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
     private void save() {
         /*
         Folder Structure
@@ -139,7 +153,7 @@ public class Options {
         Main.onAfterOptionsMenuClosed();
     }
 
-    private void close() {
+    void close() {
         Main.configFrame.setVisible(false);
     }
 }

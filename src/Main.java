@@ -28,6 +28,7 @@ public class Main {
      */
     static String LIBRARY_FOLDER;
     static String DOWNLOADS_FOLDER;
+    static JFrame editFrame;
     /**
      * The GUI class for the swing window.
      * This is used to create the swing window (JFrame),
@@ -37,6 +38,8 @@ public class Main {
      * @see Rendering The host class for the main GUI of this app.
      */
     static Rendering gui = null;
+    private static String OUTPUT_FOLDER;
+    static JFrame configFrame;
     /**
      * The JFrame object that represents the window
      * created by the program. It is a variable
@@ -45,9 +48,7 @@ public class Main {
      * @see Rendering
      * @see Options
      */
-    static JFrame guiFrame;
-    static JFrame configFrame;
-    private static String OUTPUT_FOLDER;
+    private static JFrame guiFrame;
     /**
      * The timer used by `calculateRemainingTime`.
      *
@@ -151,6 +152,12 @@ public class Main {
     }
 
     /**
+     * Patterns to recognize useful filenames.
+     */
+    //private static Pattern pngPattern = Pattern.compile("(rvm_dl_[a-z0-9]{4}_thing_t[13]_[a-z0-9]{7}(_[0-9]{1,2})?.png)");
+    private static Pattern manifestPattern = Pattern.compile("(rvm_manifest_[a-z0-9]{4}.json)");
+
+    /**
      * Open the options menu.
      * This is achieved by setting the already-existing
      * "guiFrame"'s visibility to false and the
@@ -159,9 +166,123 @@ public class Main {
      *
      * @see Options
      */
-    private static void openOptionsMenu() {
+    static void openOptionsMenu() {
         guiFrame.setVisible(false);
         configFrame.setVisible(true);
+    }
+
+    private static String getDescriptionBlurb(String sr, VideoManifest vm) {
+        Map<String, String> descs = new HashMap<>();
+        descs.put("r/AskReddit", "Welcome to r/AskReddit, where redditors answer the question: " + vm.title);
+        descs.put("r/ProRevenge", "Welcome to r/ProRevenge, where redditors share their stories of going out" +
+                " of their way to get revenge. Today's story: " + vm.title);
+        descs.put("r/PettyRevenge", "Welcome to r/PettyRevenge, where redditors talk about their experiences " +
+                "with getting revenge in a petty way. Today's story: " + vm.title);
+        descs.put("r/MaliciousCompliance", "Welcome to r/MaliciousCompliance, where redditors talk about the times " +
+                "they complied with someone's orders for the worse. Today's story: " + vm.title);
+        descs.put("r/NuclearRevenge", "Welcome to r/NuclearRevenge, where redditors share their revenge stories, which " +
+                "are extreme and sometimes legally questionable. Today's story: " + vm.title);
+
+        return descs.get(sr);
+    }
+
+    /**
+     * Run a command and return the last line outputted by it's stdOut stream.
+     * The environment for this command will be the Downloads folder specified
+     * by the configuration.
+     *
+     * @param com The command to execute.
+     * @return The last line outputted after the command is executed and terminates.
+     * @throws IOException          If there was an IO error with the command, i.e. the file could not be found.
+     * @throws InterruptedException If the process's thread is interrupted.
+     */
+    private static String getOutputFromCommand(String com) throws IOException, InterruptedException {
+        out("> " + com);
+        Process proc = Runtime.getRuntime().exec(com, null, new File(DOWNLOADS_FOLDER));
+        String line;
+        String output = null;
+        BufferedReader bf = new BufferedReader(new InputStreamReader(proc.getInputStream()));
+        while ((line = bf.readLine()) != null) {
+            out(line);
+            output = line;
+        }
+        int exitCode = proc.waitFor();
+        out("Process ended with exit code " + exitCode);
+        return output;
+    }
+
+    @NotNull
+    static ArrayList<File> randomizeFilesInFolder(String folder) {
+        File dir = new File(folder);
+        ArrayList<File> files = new ArrayList<>(Arrays.asList(Objects.requireNonNull(dir.listFiles())));
+        for (File f : files) {
+            if (f.getName().contains(".ini")) {
+                //Remove 'desktop.ini' from the returned list
+                files.remove(f);
+                break;
+            }
+        }
+        Collections.shuffle(files);
+        return files;
+    }
+
+    static boolean requestUserYesOrNo(String label) {
+        return JOptionPane.showConfirmDialog(getGUI(), label) == JOptionPane.YES_OPTION;
+    }
+
+    @NotNull
+    static String requestUserInput(String label) {
+        return JOptionPane.showInputDialog(getGUI(), label);
+    }
+
+    /**
+     * Get the JPanel part of the GUI.
+     *
+     * @return The JPanel (implicitly casted to Component)
+     */
+    @Nullable
+    static Component getGUI() {
+        if (gui != null) {
+            return gui.panel;
+        }
+        return null;
+    }
+
+    /**
+     * Run a console command and record the output
+     * from it in the log.
+     *
+     * @param com The command to run.
+     * @throws IOException          If there was an IO error running the process.
+     * @throws InterruptedException If the process thread is interrupted.
+     */
+    private static void exec(String com) throws IOException, InterruptedException {
+        out("> " + com);
+        Process process = Runtime.getRuntime().exec(com, null, new File(DOWNLOADS_FOLDER));
+        String line;
+        BufferedReader stdIn = new BufferedReader(new InputStreamReader(process.getInputStream()));
+        while ((line = stdIn.readLine()) != null) {
+            out("[runCommand: out] " + line);
+        }
+        BufferedReader stdError = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+        while ((line = stdError.readLine()) != null) {
+            err("[runCommand: error] " + line);
+        }
+        int exitCode = process.waitFor();
+        out("Process finished with exit code " + exitCode);
+    }
+
+    /**
+     * Move a file by renaming it to a different file name/path.
+     *
+     * @param original The path of the original file.
+     * @param dest     The path of the new file.
+     */
+    @SuppressWarnings("ResultOfMethodCallIgnored")
+    private static void moveFile(String original, String dest) {
+        out("Moving file " + original + " to " + dest);
+        new File(dest).getParentFile().mkdirs();
+        new File(original).renameTo(new File(dest));
     }
 
     /**
@@ -188,50 +309,11 @@ public class Main {
 
                 guiFrame.setSize(960, 540);
                 guiFrame.setExtendedState(JFrame.MAXIMIZED_BOTH);
-
-                Pattern pngPattern = Pattern.compile("(rvm_dl_[a-z0-9]{4}_thing_t[13]_[a-z0-9]{7}(_[0-9]{1,2})?.png)");
-                Pattern manifestPattern = Pattern.compile("(rvm_manifest_[a-z0-9]{4}.json)");
-
                 int screenshots = 0;
 
                 try {
-                    out("Starting...");
-                    File downloadsFolder = new File(DOWNLOADS_FOLDER);
-                    out("Searching " + downloadsFolder.getAbsolutePath() + " for matching files...");
-                    String DLid = null;
-                    File[] files = downloadsFolder.listFiles();
-                    if (files == null) {
-                        err("Downloads folder not found! Was it configured correctly?");
-                        exit(1);
-                    }
-                    for (File f : files) {
-                        String name = f.getName().toLowerCase();
-                        Matcher pngMatcher = pngPattern.matcher(name);
-                        //Matcher mp3Matcher = mp3Pattern.matcher(name);
-                        Matcher manifestMatcher = manifestPattern.matcher(name);
-                        if (pngMatcher.matches()) {
-                            out("Found file: " + name);
-                            //Extract download ID
-                            DLid = name.substring(7, 11);
-                            screenshots++;
-                        } else if (manifestMatcher.matches()) {
-                            out("Found manifest file: " + name);
-                            //Extract download ID
-                            DLid = name.substring(13, 17);
-                        }
-                    }
-
-                    if (DLid == null) {
-                        JOptionPane.showMessageDialog(getGUI(), "Couldn't find a recent download! Download a manifest and screenshots " +
-                                "using the RVM Chrome extension on a thread at https://reddit.com/r/AskReddit/");
-                        Desktop.getDesktop().browse(new URI("https://reddit.com/r/AskReddit"));
-                        exit(1);
-                    }
-
-                    //Look at the manifest and find the post title/subreddit
-                    File manifest = new File(DOWNLOADS_FOLDER + "/rvm_manifest_" + DLid + ".json");
-                    Gson gson = new Gson();
-                    VideoManifest vm = gson.fromJson(new BufferedReader(new FileReader(manifest)), VideoManifest.class);
+                    String DLid = getDLid();
+                    VideoManifest vm = getManifest(DLid);
 
                     String background = Config.getBackground();
                     if (background.equals("null")) {
@@ -492,7 +574,7 @@ public class Main {
 
                     out("Everything's done!");
 
-                } catch (IOException | InterruptedException | NullPointerException | URISyntaxException e) {
+                } catch (IOException | InterruptedException | NullPointerException e) {
                     StringWriter sw = new StringWriter();
                     PrintWriter pw = new PrintWriter(sw);
                     e.printStackTrace(pw);
@@ -503,165 +585,6 @@ public class Main {
         };
 
         worker.execute();
-    }
-
-    private static String getDescriptionBlurb(String sr, VideoManifest vm) {
-        Map<String, String> descs = new HashMap<>();
-        descs.put("r/AskReddit", "Welcome to r/AskReddit, where redditors answer the question: " + vm.title);
-        descs.put("r/ProRevenge", "Welcome to r/ProRevenge, where redditors share their stories of going out" +
-                " of their way to get revenge. Today's story: " + vm.title);
-        descs.put("r/PettyRevenge", "Welcome to r/PettyRevenge, where redditors talk about their experiences " +
-                "with getting revenge in a petty way. Today's story: " + vm.title);
-        descs.put("r/MaliciousCompliance", "Welcome to r/MaliciousCompliance, where redditors talk about the times " +
-                "they complied with someone's orders for the worse. Today's story: " + vm.title);
-        descs.put("r/NuclearRevenge", "Welcome to r/NuclearRevenge, where redditors share their revenge stories, which " +
-                "are extreme and sometimes legally questionable. Today's story: " + vm.title);
-
-        return descs.get(sr);
-    }
-
-    /**
-     * Run a command and return the last line outputted by it's stdOut stream.
-     * The environment for this command will be the Downloads folder specified
-     * by the configuration.
-     *
-     * @param com The command to execute.
-     * @return The last line outputted after the command is executed and terminates.
-     * @throws IOException          If there was an IO error with the command, i.e. the file could not be found.
-     * @throws InterruptedException If the process's thread is interrupted.
-     */
-    private static String getOutputFromCommand(String com) throws IOException, InterruptedException {
-        out("> " + com);
-        Process proc = Runtime.getRuntime().exec(com, null, new File(DOWNLOADS_FOLDER));
-        String line;
-        String output = null;
-        BufferedReader bf = new BufferedReader(new InputStreamReader(proc.getInputStream()));
-        while ((line = bf.readLine()) != null) {
-            out(line);
-            output = line;
-        }
-        int exitCode = proc.waitFor();
-        out("Process ended with exit code " + exitCode);
-        return output;
-    }
-
-    @NotNull
-    static ArrayList<File> randomizeFilesInFolder(String folder) {
-        File dir = new File(folder);
-        ArrayList<File> files = new ArrayList<>(Arrays.asList(Objects.requireNonNull(dir.listFiles())));
-        for (File f : files) {
-            if (f.getName().contains(".ini")) {
-                //Remove 'desktop.ini' from the returned list
-                files.remove(f);
-                break;
-            }
-        }
-        Collections.shuffle(files);
-        return files;
-    }
-
-    static boolean requestUserYesOrNo(String label) {
-        return JOptionPane.showConfirmDialog(getGUI(), label) == JOptionPane.YES_OPTION;
-    }
-
-    @NotNull
-    static String requestUserInput(String label) {
-        return JOptionPane.showInputDialog(getGUI(), label);
-    }
-
-    /**
-     * Get the JPanel part of the GUI.
-     *
-     * @return The JPanel (implicitly casted to Component)
-     */
-    @Nullable
-    static Component getGUI() {
-        if (gui != null) {
-            return gui.panel;
-        }
-        return null;
-    }
-
-    /**
-     * Run a console command and record the output
-     * from it in the log.
-     *
-     * @param com The command to run.
-     * @throws IOException          If there was an IO error running the process.
-     * @throws InterruptedException If the process thread is interrupted.
-     */
-    private static void exec(String com) throws IOException, InterruptedException {
-        out("> " + com);
-        Process process = Runtime.getRuntime().exec(com, null, new File(DOWNLOADS_FOLDER));
-        String line;
-        BufferedReader stdIn = new BufferedReader(new InputStreamReader(process.getInputStream()));
-        while ((line = stdIn.readLine()) != null) {
-            out("[runCommand: out] " + line);
-        }
-        BufferedReader stdError = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-        while ((line = stdError.readLine()) != null) {
-            err("[runCommand: error] " + line);
-        }
-        int exitCode = process.waitFor();
-        out("Process finished with exit code " + exitCode);
-    }
-
-    /**
-     * Move a file by renaming it to a different file name/path.
-     *
-     * @param original The path of the original file.
-     * @param dest     The path of the new file.
-     */
-    @SuppressWarnings("ResultOfMethodCallIgnored")
-    private static void moveFile(String original, String dest) {
-        out("Moving file " + original + " to " + dest);
-        new File(dest).getParentFile().mkdirs();
-        new File(original).renameTo(new File(dest));
-    }
-
-    /**
-     * Estimate the remaining time based on the current time, start time, current index, and total length.
-     * Every second, if the method hasn't been called again, estimate the remaining time again so it is more "accurate"
-     * for longer tasks (where each index takes a long period of time, for example a video encode.)
-     *
-     * @param startTime    The time (System.currentTimeMillis()) of when the process started.
-     * @param currentIndex The current step of the process.
-     * @param length       The total number of steps required for the process to complete.
-     *                     When the task completes, `currentIndex` should be equal to `length`.
-     * @throws IllegalArgumentException  If the current time < `startTime`.
-     * @throws IndexOutOfBoundsException If `currentIndex` > `length`
-     */
-    static void calculateRemainingTime(long startTime, long length, long currentIndex)
-            throws IllegalArgumentException, IndexOutOfBoundsException {
-        System.out.println("Main.calculateRemainingTime");
-        System.out.println("startTime = " + startTime + ", length = " + length + ", currentIndex = " + currentIndex);
-        //Calculate the remaining time
-        long elapsedTime = System.currentTimeMillis() - startTime;
-
-        if (currentIndex > length) throw new IndexOutOfBoundsException("currentIndex > length.");
-        if (elapsedTime < 0) throw new IllegalArgumentException("startTime occurs after the current time.");
-
-        long totalTime = (length * (elapsedTime / currentIndex));
-        long remainingTime = totalTime - elapsedTime;
-        final int[] seconds = {(int) (remainingTime / 1000)};
-        setRemainingTimeText(seconds[0]);
-        if (timer != null) {
-            timer.cancel();
-        }
-        //Tick it down by one second every second so it stays accurate
-        timer = new Timer();
-        timer.scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-                try {
-                    seconds[0] -= 1;
-                    setRemainingTimeText(seconds[0]);
-                } catch (ArithmeticException e) {
-                    //Attempted to divide by 0. Just continue so it returns "Estimating..." instead of an error.
-                }
-            }
-        }, 0, 1000);
-        SwingUtilities.invokeLater(() -> gui.timeRemaining.setText("Estimating..."));
     }
 
     /**
@@ -723,5 +646,89 @@ public class Main {
             err("Error saving log file: " + e.getMessage());
         }
         System.exit(code);
+    }
+
+    /**
+     * Estimate the remaining time based on the current time, start time, current index, and total length.
+     * Every second, if the method hasn't been called again, estimate the remaining time again so it is more "accurate"
+     * for longer tasks (where each index takes a long period of time, for example a video encode.)
+     *
+     * @param startTime    The time (System.currentTimeMillis()) of when the process started.
+     * @param currentIndex The current step of the process.
+     * @param length       The total number of steps required for the process to complete.
+     *                     When the task completes, `currentIndex` should be equal to `length`.
+     * @throws IllegalArgumentException  If the current time < `startTime`.
+     * @throws IndexOutOfBoundsException If `currentIndex` > `length`
+     */
+    static void calculateRemainingTime(long startTime, long length, long currentIndex)
+            throws IllegalArgumentException, IndexOutOfBoundsException {
+        System.out.println("Main.calculateRemainingTime");
+        System.out.println("startTime = " + startTime + ", length = " + length + ", currentIndex = " + currentIndex);
+        //Calculate the remaining time
+        long elapsedTime = System.currentTimeMillis() - startTime;
+
+        if (currentIndex > length) throw new IndexOutOfBoundsException("currentIndex > length.");
+        if (elapsedTime < 0) throw new IllegalArgumentException("startTime occurs after the current time.");
+
+        if (currentIndex == 0) currentIndex = 1;
+
+        long totalTime = (length * (elapsedTime / currentIndex));
+        long remainingTime = totalTime - elapsedTime;
+        final int[] seconds = {(int) (remainingTime / 1000)};
+        setRemainingTimeText(seconds[0]);
+        if (timer != null) {
+            timer.cancel();
+        }
+        //Tick it down by one second every second so it stays accurate
+        timer = new Timer();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                try {
+                    seconds[0] -= 1;
+                    setRemainingTimeText(seconds[0]);
+                } catch (ArithmeticException e) {
+                    //Attempted to divide by 0. Just continue so it returns "Estimating..." instead of an error.
+                }
+            }
+        }, 0, 1000);
+        SwingUtilities.invokeLater(() -> gui.timeRemaining.setText("Estimating..."));
+    }
+
+    static String getDLid() {
+        File downloadsFolder = new File(Config.getDownloadsFolder());
+        out("Searching " + downloadsFolder.getAbsolutePath() + " for matching files...");
+        File[] files = downloadsFolder.listFiles();
+        if (files == null) {
+            err("Downloads folder not found! Was it configured correctly?");
+            exit(1);
+        } else {
+            for (File f : files) {
+                String name = f.getName().toLowerCase();
+                Matcher manifestMatcher = manifestPattern.matcher(name);
+                if (manifestMatcher.matches()) {
+                    out("Found manifest file: " + name);
+                    //Extract download ID
+                    return name.substring(13, 17);
+                }
+            }
+            return null;
+        }
+        return null;
+    }
+
+    static VideoManifest getManifest(String DLid) throws FileNotFoundException {
+
+        if (DLid == null) {
+            JOptionPane.showMessageDialog(getGUI(), "Couldn't find a recent download! Download a manifest and screenshots " +
+                    "using the RVM Chrome extension on a thread at https://reddit.com/r/AskReddit/");
+            //Desktop.getDesktop().browse(new URI("https://reddit.com/r/AskReddit"));
+            exit(1);
+        }
+
+        //Look at the manifest and find the post title/subreddit
+        File manifest = new File(Config.getDownloadsFolder() + "/rvm_manifest_" + DLid + ".json");
+        Gson gson = new Gson();
+        return gson.fromJson(new BufferedReader(new FileReader(manifest)), VideoManifest.class);
     }
 }
