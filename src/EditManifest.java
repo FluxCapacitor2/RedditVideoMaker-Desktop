@@ -16,9 +16,9 @@ public class EditManifest {
     private JFrame frame;
     private VideoManifestComment[] comments;
 
-    public EditManifest(VideoManifestComment[] comments) {
+    EditManifest(VideoManifestComment[] comments) {
         this.comments = comments;
-        frame = new JFrame("Grid Bag Example");
+        frame = new JFrame("Edit Video");
         frame.setSize(1920, 1000);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
@@ -49,6 +49,7 @@ public class EditManifest {
             //Continue with the program by re-opening the options menu.
             frame.setVisible(false);
             Main.openOptionsMenu();
+            frame.dispose();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -86,7 +87,7 @@ public class EditManifest {
             gbc.gridx = 3;
             JButton editBtn = new JButton("Edit");
             int finalI = i;
-            editBtn.addActionListener(e -> updateManifest(finalI, JOptionPane.showInputDialog("Edit comment:\n\"" + comments[finalI].text + "\"")));
+            editBtn.addActionListener(e -> updateManifest(finalI, JOptionPane.showInputDialog(null, "Edit comment:\n\"" + c.text + "\"", c.text)));
             panel.add(editBtn, gbc);
             gbc.gridx = 4;
             JButton removeBtn = new JButton("Remove");
