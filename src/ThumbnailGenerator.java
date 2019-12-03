@@ -26,6 +26,8 @@ public class ThumbnailGenerator {
     static String generateThumbnail(VideoManifest vm) throws IOException {
         String thumbnailPath;
         int fontSize = 160;
+        vm.title = JOptionPane.showInputDialog(null,
+                "Text to be shown in thumbnail:\n\n(Originally \"" + vm.title + "\")", vm.title);
         do {
             fontSize -= 10;
             //Generate a thumbnail for YouTube
