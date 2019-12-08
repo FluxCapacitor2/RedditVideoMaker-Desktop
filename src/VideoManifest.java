@@ -1,9 +1,10 @@
 public class VideoManifest {
     public VideoManifestComment[] comments;
-    public String title;
-    public String subreddit;
-    public String URL;
+    public String[] titles;
+    public String[] subreddits;
+    public String[] URLs;
 
+/*
     public String toString() {
         StringBuilder toReturn = new StringBuilder();
         toReturn.append("\nTitle: ").append(title).append(" (").append(subreddit).append(")");
@@ -14,4 +15,5 @@ public class VideoManifest {
         }
         return toReturn.toString();
     }
+ */
 }

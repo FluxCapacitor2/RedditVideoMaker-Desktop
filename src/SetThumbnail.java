@@ -53,6 +53,8 @@ public class SetThumbnail {
                     Main.gui.progressLabel.setText(Math.round(progress.getProgress() * 100) + "%");
                     Main.calculateRemainingTime(startTime, 100, (long) (progress.getProgress() * 100));
                     Main.gui.progressBar.setValue((int) (progress.getProgress() * 100));
+                    Main.guiFrame.setAlwaysOnTop(true);
+                    Main.guiFrame.setAlwaysOnTop(Config.getAlwaysOnTop());
                 } catch (IOException e) {
                     e.printStackTrace();
                 }

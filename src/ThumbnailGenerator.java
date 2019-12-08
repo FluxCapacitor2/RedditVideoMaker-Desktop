@@ -11,23 +11,11 @@ public class ThumbnailGenerator {
     private static final int WIDTH = 1920;
     private static final int HEIGHT = 1080;
 
-    public static void main(String[] args) throws IOException {
-        String title = Main.requestUserInput("Please enter the video title.");
-        String DLid = Main.requestUserInput("Please enter the download ID associated with the output file.");
-
-        VideoManifest m = new VideoManifest();
-        m.title = title;
-        VideoManifestComment comment = new VideoManifestComment();
-        comment.DLid = DLid;
-        m.comments = new VideoManifestComment[]{comment};
-        generateThumbnail(m);
-    }
-
-    static String generateThumbnail(VideoManifest vm) throws IOException {
+    static String generateThumbnail(String DLid, String title, String subreddit) throws IOException {
         String thumbnailPath;
         int fontSize = 160;
-        vm.title = JOptionPane.showInputDialog(null,
-                "Text to be shown in thumbnail:\n\n(Originally \"" + vm.title + "\")", vm.title);
+        title = JOptionPane.showInputDialog(null,
+                "Text to be shown in thumbnail:\n\n(Originally \"" + title + "\")", title);
         do {
             fontSize -= 10;
             //Generate a thumbnail for YouTube
@@ -43,7 +31,7 @@ public class ThumbnailGenerator {
             graphics.setFont(new Font("Roboto", Font.PLAIN, fontSize));
             //Figure out when we need to wrap the text
             FontMetrics fontMetrics = graphics.getFontMetrics();
-            ArrayList<String> lines = new ArrayList<>(LineBreak.wrap(vm.title, fontMetrics, WIDTH - 400));
+            ArrayList<String> lines = new ArrayList<>(LineBreak.wrap(title, fontMetrics, WIDTH - 400));
             Main.out("Wrapped text = " + lines);
             //We have to draw each line individually because graphics#drawString doesn't respect multi-line strings.
             for (int i = 0; i < lines.size(); i++) {
@@ -53,11 +41,11 @@ public class ThumbnailGenerator {
             //Add the subreddit text
             graphics.setColor(new Color(255, 255, 255));
             graphics.setFont(new Font("Roboto Thin", Font.PLAIN, 100));
-            graphics.drawString(vm.subreddit.substring(1, vm.subreddit.length() - 1), 250, 155);
+            graphics.drawString(subreddit.substring(1, subreddit.length() - 1), 250, 155);
             //Add the exquisite reddit "ER" logo in the bottom right
             graphics.drawImage(ImageIO.read(new File(Main.LIBRARY_FOLDER + "/er_logo.png")), 1650, 40, 200, 200, null);
             //Save the image
-            thumbnailPath = Main.DOWNLOADS_FOLDER + "/rvm_final_" + vm.comments[0].DLid + "_thumbnail.png";
+            thumbnailPath = Main.DOWNLOADS_FOLDER + "/rvm_final_" + DLid + "_thumbnail.png";
             File outputFile = new File(thumbnailPath);
             ImageIO.write(bi, "png", outputFile);
             //Desktop.getDesktop().open(outputFile);

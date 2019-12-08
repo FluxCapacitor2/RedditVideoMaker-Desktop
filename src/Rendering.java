@@ -15,6 +15,8 @@ public class Rendering {
     JButton stopBtn;
     JLabel timeRemaining;
     JScrollPane scrollPane;
+    JLabel renderPreview;
+    private JPanel renderPreviewParent;
     JLabel imageView;
 
     Options options;
@@ -27,7 +29,11 @@ public class Rendering {
         imageView.setText("");
         imageView.setMaximumSize(new Dimension(500, 500));
 
-        stopBtn.addActionListener(e -> System.exit(2));
+        //Until I can figure out how to get the preview to work, here we go:
+        renderPreviewParent.setVisible(false);
+        renderPreview.setVisible(false);
+
+        stopBtn.addActionListener(e -> Main.exit(2));
 
         DefaultCaret caret = (DefaultCaret) logArea.getCaret();
         caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);

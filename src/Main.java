@@ -5,6 +5,7 @@ import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -48,7 +49,7 @@ public class Main {
      * @see Rendering
      * @see Options
      */
-    private static JFrame guiFrame;
+    static JFrame guiFrame;
     /**
      * The timer used by `calculateRemainingTime`.
      *
@@ -171,19 +172,43 @@ public class Main {
         configFrame.setVisible(true);
     }
 
-    private static String getDescriptionBlurb(String sr, VideoManifest vm) {
-        Map<String, String> descs = new HashMap<>();
-        descs.put("r/AskReddit", "Welcome to r/AskReddit, where redditors answer the question: " + vm.title);
-        descs.put("r/ProRevenge", "Welcome to r/ProRevenge, where redditors share their stories of going out" +
-                " of their way to get revenge. Today's story: " + vm.title);
-        descs.put("r/PettyRevenge", "Welcome to r/PettyRevenge, where redditors talk about their experiences " +
-                "with getting revenge in a petty way. Today's story: " + vm.title);
-        descs.put("r/MaliciousCompliance", "Welcome to r/MaliciousCompliance, where redditors talk about the times " +
-                "they complied with someone's orders for the worse. Today's story: " + vm.title);
-        descs.put("r/NuclearRevenge", "Welcome to r/NuclearRevenge, where redditors share their revenge stories, which " +
-                "are extreme and sometimes legally questionable. Today's story: " + vm.title);
-
-        return descs.get(sr);
+    private static String getDescriptionBlurb(String sr, String[] titles) {
+        if (titles.length == 1) {
+            //Singular
+            String title = titles[0];
+            Map<String, String> descs = new HashMap<>();
+            descs.put("r/AskReddit", "Welcome to r/AskReddit, where redditors answer the question: " + title);
+            descs.put("r/ProRevenge", "Welcome to r/ProRevenge, where redditors share their stories of going out" +
+                    " of their way to get revenge. Today's story: " + title);
+            descs.put("r/PettyRevenge", "Welcome to r/PettyRevenge, where redditors talk about their experiences " +
+                    "with getting revenge in a petty way. Today's story: " + title);
+            descs.put("r/MaliciousCompliance", "Welcome to r/MaliciousCompliance, where redditors talk about the times " +
+                    "they complied with someone's orders for the worse. Today's story: " + title);
+            descs.put("r/NuclearRevenge", "Welcome to r/NuclearRevenge, where redditors share their revenge stories, which " +
+                    "are extreme and sometimes legally questionable. Today's story: " + title);
+            descs.put("r/tifu", "Welcome to r/tifu (today I f*cked up), where redditors share their stories of daily life " +
+                    "going horribly wrong. Today's story: " + title);
+            return descs.get(sr);
+        } else {
+            StringBuilder sb = new StringBuilder();
+            for (String s : titles) {
+                sb.append("➡️ ").append(s).append("\n");
+            }
+            String title = sb.toString();
+            Map<String, String> descsPlural = new HashMap<>();
+            descsPlural.put("r/AskReddit", "Welcome to r/AskReddit, where redditors answer the questions:\n " + title);
+            descsPlural.put("r/ProRevenge", "Welcome to r/ProRevenge, where redditors share their stories of going out" +
+                    " of their way to get revenge. Today's stories:\n" + title);
+            descsPlural.put("r/PettyRevenge", "Welcome to r/PettyRevenge, where redditors talk about their experiences " +
+                    "with getting revenge in a petty way. Today's stories:\n" + title);
+            descsPlural.put("r/MaliciousCompliance", "Welcome to r/MaliciousCompliance, where redditors talk about the times " +
+                    "they complied with someone's orders for the worse. Today's stories:\n" + title);
+            descsPlural.put("r/NuclearRevenge", "Welcome to r/NuclearRevenge, where redditors share their revenge stories, which " +
+                    "are extreme and sometimes legally questionable. Today's stories:\n" + title);
+            descsPlural.put("r/tifu", "Welcome to r/tifu (today I f*cked up), where redditors share their stories of daily life " +
+                    "going horribly wrong. Today's stories:\n" + title);
+            return descsPlural.get(sr);
+        }
     }
 
     /**
@@ -354,7 +379,7 @@ public class Main {
                     boolean result = requestUserYesOrNo("Proceed?\n\nDownload ID: " + DLid + "\nVideo Length: " +
                             (Config.getCalcLength() ? "~" + Math.round((length / 60) + (1.0 / 3.0)) + " minutes" : "(Not enabled)") +
                             "\nBackground: " + background + "\nComments: " + (vm.comments.length - 1)
-                            + "\nPost Title: " + vm.title + " (" + vm.subreddit + ")" +
+                            + "\nTitle(s): " + Arrays.toString(vm.titles) + "\nSubreddit(s): " + Arrays.toString(vm.subreddits) +
                             "\nFound " + screenshots + " images.");
                     if (!result) {
                         exit(0);
@@ -366,11 +391,40 @@ public class Main {
                     for (VideoManifestComment comment : vm.comments) {
                         if (!new File(DOWNLOADS_FOLDER + "/" + comment.name).exists()) {
                             err("Required file " + comment.name + " does not exist.");
-                            JOptionPane.showMessageDialog(getGUI(), "You are missing a required file from the download:\n" +
-                                    comment.name, "Missing required asset", JOptionPane.ERROR_MESSAGE);
+                            if (requestUserYesOrNo("You are missing a required file from the download: \"" +
+                                    comment.name + "\"\n\nClick Yes to go to the editor, or" +
+                                    " No/Cancel to stop the program.")) {
+                                guiFrame.dispose();
+                                new EditManifest(vm.comments);
+                                return null;
+                            }
                             exit(1);
                         } else {
                             out("Required file " + comment.name + " exists.");
+                        }
+                    }
+
+                    //Start by asking the user to pick a post title to be shown in the video.
+                    out("Selecting a video title to use...");
+                    int response = JOptionPane.showOptionDialog(null,
+                            "Please pick a title to be the most prominently shown in the video's metadata: ",
+                            "Select an option", JOptionPane.DEFAULT_OPTION, JOptionPane.PLAIN_MESSAGE,
+                            null, vm.titles, vm.titles[0]);
+
+                    out("Selected option: " + response + " (" + vm.titles[response] + ")");
+
+                    String title = vm.titles[response];
+                    String subreddit = vm.subreddits[response];
+                    String URL = vm.URLs[response];
+
+                    gui.progressBar.setIndeterminate(true);
+                    gui.title.setText("Generating thumbnail");
+                    gui.progressLabel.setText("1 / 1");
+                    //Make the thumbnail for the video (which is also used in the first comment temp video)
+                    ArrayList<String> thumbnails = new ArrayList<>();
+                    for (VideoManifestComment comment : vm.comments) {
+                        if (comment.isTitle) {
+                            thumbnails.add(ThumbnailGenerator.generateThumbnail(comment.DLid, comment.text, comment.subreddit));
                         }
                     }
 
@@ -388,18 +442,13 @@ public class Main {
                     }
                     exec("cmd /c start \"(1/1) Generating Audio Track\" /min /wait \"" + LIBRARY_FOLDER + "/bin/ffmpeg\" -hwaccel auto -i " + String.join(" -hwaccel auto -i ", audioFilesStrings.toArray(new String[]{})) + " -filter_complex \"" + audioConcatData + "concat=n=" + audioFiles.size() + ":v=0:a=1[outa]\" -map \"[outa]\" -n rvm_audio_" + DLid + ".mp3");
 
-                    gui.progressBar.setIndeterminate(true);
-                    gui.title.setText("Generating thumbnail");
-                    gui.progressLabel.setText("1 / 1");
-                    //Make the thumbnail for the video (which is also used in the first comment video)
-                    String thumbnailPath = ThumbnailGenerator.generateThumbnail(vm);
-
                     i = 1;
                     gui.title.setText("Rendering temporary videos");
                     gui.progressBar.setMaximum(vm.comments.length);
                     gui.progressBar.setIndeterminate(false);
                     gui.progressLabel.setText("Starting...");
                     long startTime = System.currentTimeMillis();
+                    gui.renderPreview.setVisible(true);
                     for (VideoManifestComment comment : vm.comments) {
                         String out = "rvm_temp_" + comment.DLid + "_thing_" + comment.thingId + ".mp4";
                         File outFile = new File(DOWNLOADS_FOLDER + "/" + out);
@@ -413,18 +462,25 @@ public class Main {
                             String mp3 = "rvm_dl_" + comment.DLid + "_thing_" + comment.thingId + ".mp3";
                             String png = "rvm_dl_" + comment.DLid + "_thing_" + comment.thingId + ".png";
 
-                            if (i == 1) {
-                                png = thumbnailPath;
+                            ImageIcon icon = new ImageIcon(png);
+                            gui.renderPreview.setIcon(getScaledImage(icon, (icon.getIconWidth() / icon.getIconHeight()) * 400, 400));
+
+                            if (comment.isTitle) {
+                                png = Main.DOWNLOADS_FOLDER + "/rvm_final_" + comment.DLid + "_thumbnail.png";
                             }
                             String com = "\"" + LIBRARY_FOLDER + "/bin/ffprobe.exe\" -v error -select_streams a:0 -show_entries stream=duration -of default=noprint_wrappers=1:nokey=1 -sexagesimal \"" + DOWNLOADS_FOLDER + "/rvm_dl_" + comment.DLid + "_thing_" + comment.thingId + ".mp3\"";
                             String videoLength = getOutputFromCommand(com);
                             //Cut everything to the length of the audio because `-shortest` is very buggy in this scenario.
-                            exec("cmd /c start \"(" + i + "/" + vm.comments.length + ") Generating Temporary Videos\" /min /wait \"" + LIBRARY_FOLDER + "/bin/ffmpeg\" -t " + videoLength + " -i \"" + background + "\" -hwaccel auto -t " + videoLength + " -i \"" + mp3 + "\" -r 1 -hwaccel auto -i \"" + png + "\" -filter_complex \"[0:v]boxblur=10:5 [bblur], [2:v]scale=1920:-1 [" + (i == 1 ? "ovrl1" : "ovrl") + "]," + (i == 1 ? "[ovrl1]colorkey=0x292929:0.05:0.1[ovrl]," : "") + "[bblur][ovrl]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2\" -acodec copy -map 1:a -c:a aac -shortest -r 30 -n " + out);
+                            String cmd = "cmd /c start \"(" + i + "/" + vm.comments.length + ") Generating Temporary Videos\" /min /wait \"" + LIBRARY_FOLDER + "/bin/ffmpeg\" -t " + videoLength + " -i \"" + background + "\" -hwaccel auto -t " + videoLength + " -i \"" + mp3 + "\" -r 1 -hwaccel auto -i \"" + png + "\" -filter_complex \"[0:v]boxblur=10:5 [bblur], [2:v]scale=1920:-1 [" + (comment.isTitle ? "ovrl1" : "ovrl") + "]," + (comment.isTitle ? "[ovrl1]colorkey=0x292929:0.05:0.1[ovrl]," : "") + "[bblur][ovrl]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2\" -acodec copy -map 1:a -c:a aac -shortest -r 30 -n " + out;
+                            exec(cmd);
                             long cmdEndTime = new Date().getTime();
                             long cmdTime = (cmdEndTime - cmdStartTime);
                             out("Process took " + cmdTime + "ms.");
                             if (cmdTime <= 500) {
                                 err("Abnormally short generation (probably an error) detected!");
+                                if (!requestUserYesOrNo("An error was detected while running the command:\n\n" + cmd + "\n\nContinue? (If you select Yes, there may be more problems later)")) {
+                                    exit(1);
+                                }
                             }
                         } else {
                             out("File " + out + " already exists! Skipping...");
@@ -436,6 +492,7 @@ public class Main {
                         if (!(i >= vm.comments.length)) calculateRemainingTime(startTime, vm.comments.length, i);
                         out("Finished method call.");
                     }
+                    gui.renderPreview.setVisible(false);
                     gui.timeRemaining.setText("");
 
                     gui.title.setText("Combining final video");
@@ -489,14 +546,36 @@ public class Main {
                     gui.title.setText("Starting upload to YouTube");
                     gui.timeRemaining.setText("Waiting for permission");
                     List<String> tags = new ArrayList<>(Arrays.asList(
-                            "reddit", "AMA", "IAmA", "AskReddit", "AskMeAnything", "Exquisite", "Rebbit", "Redit", "question", "q&a"
+                            "Exquisite Reddit", "AMA", "Q&A", vm.subreddits[0]
                     ));
-                    tags.addAll(Arrays.asList(vm.title.split(" ")));
+                    int currentLength = 0;
+                    for (String tag : tags) {
+                        currentLength += tag.length();
+                    }
+                    for (String t : vm.titles) {
+                        for (String s : t.split(" ")) {
+                            //For every word in every title, if the character limit permits, add a tag with the contents of this word.
+                            currentLength += s.length();
+                            if (currentLength > 500) {
+                                //We've reached the character limit, just break the loop and continue.
+                                break;
+                            }
+                            //If this is still running than we haven't reached the limit yet, add the tag to the list.
+                            tags.add(s);
+                        }
+                    }
+                    //tags.addAll(Arrays.asList(title.split(" ")));
                     out("Setting video tags: " + tags.toString());
 
-                    String sr = vm.subreddit.substring(1, vm.subreddit.length() - 1);
-                    String videoTitle = sr + " | " + vm.title;
-                    String description = getDescriptionBlurb(sr, vm) + "\n\nOriginal Post: " + vm.URL;
+                    String sr = subreddit.substring(1, subreddit.length() - 1);
+                    String videoTitle = sr + " | " + title;
+                    StringBuilder description = new StringBuilder(getDescriptionBlurb(sr, vm.titles) + ((vm.titles.length == 1) ? "\n\nOriginal Post: " + URL : "\n\nOriginal Posts:\n"));
+                    if (vm.URLs.length != 1) {
+                        for (String url : vm.URLs) {
+                            description.append("➡️ ").append(url).append("\n");
+                        }
+                    }
+                    description.append("\n\n#ExquisiteReddit | #").append(sr.substring(2));
 
                     gui.timeRemaining.setText("Updating title");
                     if (videoTitle.length() > 100) {
@@ -509,11 +588,11 @@ public class Main {
                         gui.progressBar.setIndeterminate(false);
                         gui.progressBar.setMaximum(100);
                         gui.progressBar.setValue(0);
-                        String videoId = UploadVideo.main(finalPath, videoTitle, description, tags);
+                        String videoId = UploadVideo.main(finalPath, videoTitle, description.toString(), tags);
                         gui.title.setText("Applying thumbnail");
                         gui.progressBar.setValue(2);
                         gui.progressLabel.setText("2 / 2");
-                        SetThumbnail.main(videoId, thumbnailPath);
+                        SetThumbnail.main(videoId, thumbnails.get(response));
 
                         out("Upload finished!");
 
@@ -549,6 +628,9 @@ public class Main {
                             moveFile(DOWNLOADS_FOLDER + "/" + vmc.name, OUTPUT_FOLDER + "/Archive/" + vmc.DLid + "/" + vmc.name);
                             moveFile(DOWNLOADS_FOLDER + "/rvm_temp_" + vmc.DLid + "_thing_" + vmc.thingId + ".mp4", OUTPUT_FOLDER + "/Archive/" + vmc.DLid + "/rvm_temp_" + vmc.DLid + "_thing_" + vmc.thingId + ".mp4");
                             moveFile(DOWNLOADS_FOLDER + "/rvm_dl_" + vmc.DLid + "_thing_" + vmc.thingId + ".mp3", OUTPUT_FOLDER + "/Archive/" + vmc.DLid + "/rvm_dl_" + vmc.DLid + "_thing_" + vmc.thingId + ".mp3");
+                            if (vmc.isTitle) {
+                                moveFile(DOWNLOADS_FOLDER + "/rvm_final_" + DLid + "_thumbnail.png", OUTPUT_FOLDER + "/Archive/" + DLid + "/rvm_final_" + vmc.DLid + "_thumbnail.png");
+                            }
                         }
                         gui.progressBar.setIndeterminate(true);
                         //Move manifest, final pre-cut video, and final post-cut video
@@ -557,7 +639,6 @@ public class Main {
                         moveFile(DOWNLOADS_FOLDER + "/rvm_final_" + DLid + "_preoutro.mp4", OUTPUT_FOLDER + "/Archive/" + DLid + "/rvm_final_" + DLid + "_preoutro.mp4");
                         moveFile(DOWNLOADS_FOLDER + "/rvm_audio_" + DLid + ".mp3", OUTPUT_FOLDER + "/Archive/" + DLid + "/rvm_audio_" + DLid + ".mp3");
                         moveFile(DOWNLOADS_FOLDER + "/rvm_final_" + DLid + ".mp4", OUTPUT_FOLDER + "/Final/" + DLid + ".mp4");
-                        moveFile(DOWNLOADS_FOLDER + "/rvm_final_" + DLid + "_thumbnail.png", OUTPUT_FOLDER + "/Archive/" + DLid + "/rvm_final_" + DLid + "_thumbnail.png");
                     } else {
                         out("Moving files skipped. Everything is still in the Downloads folder, which may screw up this program in the future.");
                     }
@@ -578,13 +659,28 @@ public class Main {
                     StringWriter sw = new StringWriter();
                     PrintWriter pw = new PrintWriter(sw);
                     e.printStackTrace(pw);
+                    System.err.println("An error has occurred: " + e.getClass().getCanonicalName());
+                    err("An error has occurred: " + e.getClass().getCanonicalName());
                     err(sw.toString());
+                } finally {
+                    System.err.println("Main GUI finished executing.");
                 }
                 return null;
             }
         };
 
         worker.execute();
+    }
+
+    private static Icon getScaledImage(ImageIcon icon, int w, int h) {
+        BufferedImage resizedImg = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2 = resizedImg.createGraphics();
+
+        g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        g2.drawImage(icon.getImage(), 0, 0, w, h, null);
+        g2.dispose();
+
+        return new ImageIcon(resizedImg);
     }
 
     /**
@@ -634,7 +730,7 @@ public class Main {
      * Exit using System.exit after saving
      * the current log to a file.
      */
-    private static void exit(int code) {
+    static void exit(int code) {
         File logFile = new File(System.getenv("LOCALAPPDATA") + "/rvm_logs/log_" + System.currentTimeMillis() + ".txt");
         logFile.getParentFile().mkdirs();
         out("Saving log to " + logFile.getAbsolutePath());
@@ -662,8 +758,6 @@ public class Main {
      */
     static void calculateRemainingTime(long startTime, long length, long currentIndex)
             throws IllegalArgumentException, IndexOutOfBoundsException {
-        System.out.println("Main.calculateRemainingTime");
-        System.out.println("startTime = " + startTime + ", length = " + length + ", currentIndex = " + currentIndex);
         //Calculate the remaining time
         long elapsedTime = System.currentTimeMillis() - startTime;
 

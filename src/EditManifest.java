@@ -13,6 +13,7 @@ public class EditManifest {
     private JScrollPane scrollPane;
     private JPanel panel;
     private JButton saveBtn;
+    private JButton removeByIDBtn;
     private JFrame frame;
     private VideoManifestComment[] comments;
 
@@ -27,6 +28,7 @@ public class EditManifest {
         panel.setLayout(gbl);
 
         saveBtn.addActionListener(e -> save());
+        removeByIDBtn.addActionListener(e -> removeAllByDLid(JOptionPane.showInputDialog(null, "Download ID to remove:")));
 
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
 
@@ -55,6 +57,17 @@ public class EditManifest {
         }
     }
 
+    private void removeAllByDLid(String DLid) {
+        ArrayList<VideoManifestComment> c = new ArrayList<>();
+        for (VideoManifestComment comment : this.comments) {
+            if (!comment.DLid.equals(DLid)) {
+                c.add(comment);
+            }
+        }
+        this.comments = c.toArray(new VideoManifestComment[]{});
+        renderComments(this.comments);
+    }
+
     private void renderComments(VideoManifestComment[] comments) {
 
         panel.removeAll();
@@ -75,21 +88,24 @@ public class EditManifest {
             gbc.gridy += 1;
             gbc.gridwidth = 1;
             gbc.gridheight = 1;
-            Main.out("(" + gbc.gridx + ", " + gbc.gridy + ") jLabel1");
             Graphics g = frame.getGraphics();
             FontMetrics fm = g.getFontMetrics();
             gbc.gridx = 0;
             panel.add(new JLabel("#" + i), gbc);
             gbc.gridx = 1;
-            panel.add(new JLabel("<html>" + String.join("<br />", LineBreak.wrap(c.text, fm, (int) (frame.getBounds().getWidth() / 2))) + "</html>"), gbc);
+            panel.add(new JLabel((c.isTitle ? "Video Title" : "")), gbc);
             gbc.gridx = 2;
-            panel.add(new JLabel(c.DLid), gbc);
+            panel.add(new JLabel("<html>" + String.join("<br />", LineBreak.wrap(c.text, fm, (int) (frame.getBounds().getWidth() / 2))) + "</html>"), gbc);
             gbc.gridx = 3;
+            panel.add(new JLabel(c.DLid), gbc);
+            gbc.gridx = 4;
+            panel.add(new JLabel(c.name), gbc);
+            gbc.gridx = 5;
             JButton editBtn = new JButton("Edit");
             int finalI = i;
             editBtn.addActionListener(e -> updateManifest(finalI, JOptionPane.showInputDialog(null, "Edit comment:\n\"" + c.text + "\"", c.text)));
             panel.add(editBtn, gbc);
-            gbc.gridx = 4;
+            gbc.gridx = 6;
             JButton removeBtn = new JButton("Remove");
             removeBtn.addActionListener(e -> removeFromManifest(finalI));
             panel.add(removeBtn, gbc);
