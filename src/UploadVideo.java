@@ -9,10 +9,7 @@ import com.google.api.services.youtube.model.VideoSnippet;
 import com.google.api.services.youtube.model.VideoStatus;
 
 import javax.swing.*;
-import java.io.BufferedInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.*;
 import java.security.GeneralSecurityException;
 import java.util.Collection;
 import java.util.Collections;
@@ -45,6 +42,36 @@ class UploadVideo {
         VideoSnippet snippet = new VideoSnippet();
 
         status.setPrivacyStatus("private");
+
+        //Make sure the title/description doesn't contain demonetized words.
+        File f = new File(Config.getLibraryFolder() + "/demonetized_words.txt");
+        if (f.exists()) {
+            BufferedReader bf = new BufferedReader(new FileReader(f));
+            String words = bf.readLine();
+            String[] arr = words.split(", ");
+
+            for (String word : arr) {
+                if (videoTitle.contains(word)) {
+                    JOptionPane.showMessageDialog(null, "Demonetized word found in video title: \"" + word + "\"",
+                            "Demonetized Word Found", JOptionPane.WARNING_MESSAGE);
+                }
+                if (videoDescription.contains(word)) {
+                    JOptionPane.showMessageDialog(null, "Demonetized word found in video description: \"" + word + "\"",
+                            "Demonetized Word Found", JOptionPane.WARNING_MESSAGE);
+                }
+                StringBuilder tags = new StringBuilder();
+                for (String tag : videoTags) {
+                    tags.append(tag);
+                }
+                if (tags.toString().contains(word)) {
+                    JOptionPane.showMessageDialog(null, "Demonetized word found in video tags: \"" + word + "\"",
+                            "Demonetized Word Found", JOptionPane.WARNING_MESSAGE);
+                }
+            }
+        } else {
+            Main.err("WARNING: No demonetized words list was found. Video metadata can not be checked for demonetized words.");
+        }
+
         snippet.setTitle(videoTitle);
         snippet.setDescription(videoDescription);
         snippet.setTags(videoTags);

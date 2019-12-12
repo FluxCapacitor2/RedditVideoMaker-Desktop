@@ -1,0 +1,1 @@
+You have to place background videos here. They should be around 5 minutes long so that the video does not terminate early (I'm using ffmpeg's '-shortest' option).

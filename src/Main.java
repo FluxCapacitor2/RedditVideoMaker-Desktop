@@ -173,42 +173,41 @@ public class Main {
     }
 
     private static String getDescriptionBlurb(String sr, String[] titles) {
+        String title;
         if (titles.length == 1) {
             //Singular
-            String title = titles[0];
-            Map<String, String> descs = new HashMap<>();
-            descs.put("r/AskReddit", "Welcome to r/AskReddit, where redditors answer the question: " + title);
-            descs.put("r/ProRevenge", "Welcome to r/ProRevenge, where redditors share their stories of going out" +
-                    " of their way to get revenge. Today's story: " + title);
-            descs.put("r/PettyRevenge", "Welcome to r/PettyRevenge, where redditors talk about their experiences " +
-                    "with getting revenge in a petty way. Today's story: " + title);
-            descs.put("r/MaliciousCompliance", "Welcome to r/MaliciousCompliance, where redditors talk about the times " +
-                    "they complied with someone's orders for the worse. Today's story: " + title);
-            descs.put("r/NuclearRevenge", "Welcome to r/NuclearRevenge, where redditors share their revenge stories, which " +
-                    "are extreme and sometimes legally questionable. Today's story: " + title);
-            descs.put("r/tifu", "Welcome to r/tifu (today I f*cked up), where redditors share their stories of daily life " +
-                    "going horribly wrong. Today's story: " + title);
-            return descs.get(sr);
+            title = titles[0];
         } else {
             StringBuilder sb = new StringBuilder();
             for (String s : titles) {
                 sb.append("➡️ ").append(s).append("\n");
             }
-            String title = sb.toString();
-            Map<String, String> descsPlural = new HashMap<>();
-            descsPlural.put("r/AskReddit", "Welcome to r/AskReddit, where redditors answer the questions:\n " + title);
-            descsPlural.put("r/ProRevenge", "Welcome to r/ProRevenge, where redditors share their stories of going out" +
-                    " of their way to get revenge. Today's stories:\n" + title);
-            descsPlural.put("r/PettyRevenge", "Welcome to r/PettyRevenge, where redditors talk about their experiences " +
-                    "with getting revenge in a petty way. Today's stories:\n" + title);
-            descsPlural.put("r/MaliciousCompliance", "Welcome to r/MaliciousCompliance, where redditors talk about the times " +
-                    "they complied with someone's orders for the worse. Today's stories:\n" + title);
-            descsPlural.put("r/NuclearRevenge", "Welcome to r/NuclearRevenge, where redditors share their revenge stories, which " +
-                    "are extreme and sometimes legally questionable. Today's stories:\n" + title);
-            descsPlural.put("r/tifu", "Welcome to r/tifu (today I f*cked up), where redditors share their stories of daily life " +
-                    "going horribly wrong. Today's stories:\n" + title);
-            return descsPlural.get(sr);
+            title = sb.toString();
         }
+
+        Map<String, String> descs = new HashMap<>();
+        int n = titles.length;
+        descs.put("r/AskReddit", "Welcome to r/AskReddit, where redditors answer the " + pluralize(n, "question", "questions"));
+        descs.put("r/ProRevenge", "Welcome to r/ProRevenge, where redditors share their stories of going out" +
+                " of their way to get revenge. Today's " + pluralize(n, "story", "stories"));
+        descs.put("r/pettyrevenge", "Welcome to r/PettyRevenge, where redditors talk about their experiences " +
+                "with going out of their way to get minor revenge. Today's " + pluralize(n, "story", "stories"));
+        descs.put("r/MaliciousCompliance", "Welcome to r/MaliciousCompliance, where redditors talk about the times " +
+                "they complied with someone's orders for the worse. Today's " + pluralize(n, "story", "stories"));
+        descs.put("r/NuclearRevenge", "Welcome to r/NuclearRevenge, where redditors share their revenge stories, which " +
+                "are extreme and sometimes legally questionable. Today's " + pluralize(n, "story", "stories"));
+        descs.put("r/tifu", "Welcome to r/TIFU (Today I F*cked Up), where redditors share their stories of daily life " +
+                "going horribly wrong. Today's " + pluralize(n, "story", "stories"));
+        descs.put("r/talesfromtechsupport", "Welcome to r/TalesFromTechSupport, where redditors share their " +
+                "stories from working in IT or other similar technology jobs. Today's " + pluralize(n, "story", "stories"));
+        descs.put("r/TalesFromRetail", "Welcome to r/TalesFromRetail, where redditors share their " +
+                "stories from working in retail or other similar service jobs. Today's " + pluralize(n, "story", "stories"));
+        return descs.get(sr) + ":" + pluralize(n, " ", "\n") + title;
+    }
+
+    private static String pluralize(int n, String singular, String plural) {
+        if (n == 1) return singular;
+        else return plural;
     }
 
     /**
@@ -376,11 +375,10 @@ public class Main {
                     gui.timeRemaining.setText("Waiting for confirmation");
 
                     //Request confirmation to start rendering the videos/audio track/thumbnail.
-                    boolean result = requestUserYesOrNo("Proceed?\n\nDownload ID: " + DLid + "\nVideo Length: " +
-                            (Config.getCalcLength() ? "~" + Math.round((length / 60) + (1.0 / 3.0)) + " minutes" : "(Not enabled)") +
+                    boolean result = requestUserYesOrNo("Proceed?\n\nVideo Length: " +
+                            (Config.getCalcLength() ? convertToTimeString((int) (length + 20)) : "(Not enabled)") +
                             "\nBackground: " + background + "\nComments: " + (vm.comments.length - 1)
-                            + "\nTitle(s): " + Arrays.toString(vm.titles) + "\nSubreddit(s): " + Arrays.toString(vm.subreddits) +
-                            "\nFound " + screenshots + " images.");
+                            + "\nTitle(s): " + Arrays.toString(vm.titles) + "\nSubreddit(s): " + Arrays.toString(vm.subreddits));
                     if (!result) {
                         exit(0);
                     }
@@ -406,10 +404,15 @@ public class Main {
 
                     //Start by asking the user to pick a post title to be shown in the video.
                     out("Selecting a video title to use...");
-                    int response = JOptionPane.showOptionDialog(null,
-                            "Please pick a title to be the most prominently shown in the video's metadata: ",
-                            "Select an option", JOptionPane.DEFAULT_OPTION, JOptionPane.PLAIN_MESSAGE,
-                            null, vm.titles, vm.titles[0]);
+                    int response;
+                    if (vm.titles.length == 1) {
+                        response = 0;
+                    } else {
+                        response = JOptionPane.showOptionDialog(null,
+                                "Please pick a title to be the most prominently shown in the video's metadata: ",
+                                "Select an option", JOptionPane.DEFAULT_OPTION, JOptionPane.PLAIN_MESSAGE,
+                                null, vm.titles, vm.titles[0]);
+                    }
 
                     out("Selected option: " + response + " (" + vm.titles[response] + ")");
 
@@ -440,7 +443,11 @@ public class Main {
                         audioConcatData.append("[").append(i).append(":a]");
                         audioFilesStrings.add(audioFiles.get(i).getAbsolutePath());
                     }
-                    exec("cmd /c start \"(1/1) Generating Audio Track\" /min /wait \"" + LIBRARY_FOLDER + "/bin/ffmpeg\" -hwaccel auto -i " + String.join(" -hwaccel auto -i ", audioFilesStrings.toArray(new String[]{})) + " -filter_complex \"" + audioConcatData + "concat=n=" + audioFiles.size() + ":v=0:a=1[outa]\" -map \"[outa]\" -n rvm_audio_" + DLid + ".mp3");
+                    StringBuilder inputAudioFiles = new StringBuilder();
+                    for (String f : audioFilesStrings) {
+                        inputAudioFiles.append("-hwaccel auto -i \"").append(f).append("\" ");
+                    }
+                    exec("cmd /c start \"(1/1) Generating Audio Track\" /min /wait \"" + LIBRARY_FOLDER + "/bin/ffmpeg\" " + inputAudioFiles.toString() + " -filter_complex \"" + audioConcatData + "concat=n=" + audioFiles.size() + ":v=0:a=1[outa]\" -map \"[outa]\" -n rvm_audio_" + DLid + ".mp3");
 
                     i = 1;
                     gui.title.setText("Rendering temporary videos");
@@ -578,7 +585,7 @@ public class Main {
                     description.append("\n\n#ExquisiteReddit | #").append(sr.substring(2));
 
                     gui.timeRemaining.setText("Updating title");
-                    if (videoTitle.length() > 100) {
+                    while (videoTitle.length() > 100) {
                         videoTitle = requestUserInput("The video title is over 100 characters. Please reformat the title.\nOriginal Title: " + videoTitle);
                     }
 
@@ -600,7 +607,16 @@ public class Main {
                                 "video in YouTube Studio?");
 
                         if (openInYTStudio) {
-                            Desktop.getDesktop().browse(new URI("https://studio.youtube.com/video/" + videoId + "/edit"));
+                            new Thread(() -> {
+                                try {
+                                    String url = "https://studio.youtube.com/video/" + videoId + "/edit";
+                                    if (System.getProperty("user.home").equals("C:\\Users\\tntaw"))
+                                        exec("C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe --profile-directory=\"Profile 2\"" + url);
+                                    else Desktop.getDesktop().browse(new URI(url));
+                                } catch (IOException | InterruptedException | URISyntaxException e) {
+                                    e.printStackTrace();
+                                }
+                            }).start();
                         }
                     } catch (IOException e) {
                         e.printStackTrace();
@@ -610,7 +626,7 @@ public class Main {
                             out("PATH:\n\n" + finalPath + "\n\nTITLE: \n\n" + videoTitle +
                                     "\n\nDESCRIPTION:\n\n" + description + "\n\nTAGS:\n\n" + tags);
                         }
-                    } catch (GeneralSecurityException | URISyntaxException e) {
+                    } catch (GeneralSecurityException e) {
                         e.printStackTrace();
                     }
 
@@ -672,6 +688,17 @@ public class Main {
         worker.execute();
     }
 
+    private static String convertToTimeString(int v) {
+        if (v <= 0) return "0m 0s";
+        int tempSeconds = v;
+        int minutes = 0;
+        while (tempSeconds > 60) {
+            minutes++;
+            tempSeconds -= 60;
+        }
+        return minutes + "m " + tempSeconds + "s";
+    }
+
     private static Icon getScaledImage(ImageIcon icon, int w, int h) {
         BufferedImage resizedImg = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g2 = resizedImg.createGraphics();
@@ -690,18 +717,7 @@ public class Main {
      * @param seconds The amount of seconds remaining.
      */
     private static void setRemainingTimeText(int seconds) {
-        if (seconds < 0) seconds = 0;
-        int tempSeconds = seconds;
-        int minutes = 0;
-        while (tempSeconds >= 60) {
-            tempSeconds -= 60;
-            minutes++;
-        }
-
-        int finalMinutes = minutes;
-        int finalTempSeconds = tempSeconds;
-
-        SwingUtilities.invokeLater(() -> gui.timeRemaining.setText(finalMinutes + "m " + finalTempSeconds + "s"));
+        SwingUtilities.invokeLater(() -> gui.timeRemaining.setText(convertToTimeString(seconds)));
     }
 
     /**
@@ -720,7 +736,7 @@ public class Main {
      *
      * @param str The String to output
      */
-    private static void err(String str) {
+    static void err(String str) {
         System.err.println(str);
         if (getGUI() != null) gui.logArea.append("[err] " + str + "\n");
         log.append("[err] ").append(str).append("\n");
@@ -768,6 +784,7 @@ public class Main {
 
         long totalTime = (length * (elapsedTime / currentIndex));
         long remainingTime = totalTime - elapsedTime;
+        if (remainingTime < 1000 && remainingTime > 100) remainingTime = 1000;
         final int[] seconds = {(int) (remainingTime / 1000)};
         setRemainingTimeText(seconds[0]);
         if (timer != null) {
@@ -790,6 +807,7 @@ public class Main {
     }
 
     static String getDLid() {
+        ArrayList<String> ids = new ArrayList<>();
         File downloadsFolder = new File(Config.getDownloadsFolder());
         out("Searching " + downloadsFolder.getAbsolutePath() + " for matching files...");
         File[] files = downloadsFolder.listFiles();
@@ -803,10 +821,21 @@ public class Main {
                 if (manifestMatcher.matches()) {
                     out("Found manifest file: " + name);
                     //Extract download ID
-                    return name.substring(13, 17);
+                    ids.add(name.substring(13, 17));
                 }
             }
-            return null;
+            if (ids.size() == 0) return null;
+            if (ids.size() == 1) return ids.get(0);
+
+            int response = JOptionPane.showOptionDialog(null,
+                    "Choose a Download ID to use: ",
+                    "Select an option", JOptionPane.DEFAULT_OPTION, JOptionPane.PLAIN_MESSAGE,
+                    null, ids.toArray(new String[]{}), ids.get(0));
+            if (ids.get(response) != null) {
+                exit(65);
+            }
+
+            return ids.get(response);
         }
         return null;
     }
