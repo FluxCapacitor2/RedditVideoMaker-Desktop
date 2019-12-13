@@ -831,7 +831,7 @@ public class Main {
                     "Choose a Download ID to use: ",
                     "Select an option", JOptionPane.DEFAULT_OPTION, JOptionPane.PLAIN_MESSAGE,
                     null, ids.toArray(new String[]{}), ids.get(0));
-            if (ids.get(response) != null) {
+            if (ids.get(response) == null) {
                 exit(65);
             }
 
