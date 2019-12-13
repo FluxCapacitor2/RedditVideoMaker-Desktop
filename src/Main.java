@@ -611,7 +611,7 @@ public class Main {
                                 try {
                                     String url = "https://studio.youtube.com/video/" + videoId + "/edit";
                                     if (System.getProperty("user.home").equals("C:\\Users\\tntaw"))
-                                        exec("C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe --profile-directory=\"Profile 2\"" + url);
+                                        exec("C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe --profile-directory=\"Profile 2\" " + url);
                                     else Desktop.getDesktop().browse(new URI(url));
                                 } catch (IOException | InterruptedException | URISyntaxException e) {
                                     e.printStackTrace();

@@ -49,12 +49,16 @@ class UploadVideo {
             BufferedReader bf = new BufferedReader(new FileReader(f));
             String words = bf.readLine();
             String[] arr = words.split(", ");
+            String[] titleWords = videoTitle.split(" ");
 
             for (String word : arr) {
-                if (videoTitle.contains(word)) {
-                    JOptionPane.showMessageDialog(null, "Demonetized word found in video title: \"" + word + "\"",
-                            "Demonetized Word Found", JOptionPane.WARNING_MESSAGE);
+                for (String tw : titleWords) {
+                    if (word.equalsIgnoreCase(tw)) {
+                        JOptionPane.showMessageDialog(null, "Demonetized word found in video title: \"" + word + "\"",
+                                "Demonetized Word Found", JOptionPane.WARNING_MESSAGE);
+                    }
                 }
+                /*
                 if (videoDescription.contains(word)) {
                     JOptionPane.showMessageDialog(null, "Demonetized word found in video description: \"" + word + "\"",
                             "Demonetized Word Found", JOptionPane.WARNING_MESSAGE);
@@ -67,6 +71,7 @@ class UploadVideo {
                     JOptionPane.showMessageDialog(null, "Demonetized word found in video tags: \"" + word + "\"",
                             "Demonetized Word Found", JOptionPane.WARNING_MESSAGE);
                 }
+                 */
             }
         } else {
             Main.err("WARNING: No demonetized words list was found. Video metadata can not be checked for demonetized words.");
