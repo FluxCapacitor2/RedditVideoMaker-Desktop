@@ -1,4 +1,5 @@
-import com.google.api.client.googleapis.json.GoogleJsonResponseException;
+import com.google.api.services.youtube.YouTube;
+import com.google.api.services.youtube.model.ChannelListResponse;
 import com.google.gson.Gson;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -10,6 +11,8 @@ import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.GeneralSecurityException;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.Timer;
 import java.util.*;
@@ -24,12 +27,12 @@ import java.util.regex.Pattern;
  * @version 1.1.0
  */
 public class Main {
+    private static final String OUTRO_SONG = "New Land by ALBIS";
     /**
      * These fields are configurable with command-line arguments.
      */
     static String LIBRARY_FOLDER;
     static String DOWNLOADS_FOLDER;
-    static JFrame editFrame;
     /**
      * The GUI class for the swing window.
      * This is used to create the swing window (JFrame),
@@ -49,7 +52,7 @@ public class Main {
      * @see Rendering
      * @see Options
      */
-    static JFrame guiFrame;
+    private static JFrame guiFrame;
     /**
      * The timer used by `calculateRemainingTime`.
      *
@@ -66,6 +69,16 @@ public class Main {
      * @see Main#exit(int) Saves the log and quits the program.
      */
     private static StringBuilder log = new StringBuilder();
+
+    private static ArrayList<String> thumbnails;
+
+    private static int response;
+
+    private static VideoManifest vm;
+
+    private static String DLid;
+
+    private static StringBuilder audioCredits;
 
     /**
      * Start the program. This is the main method.
@@ -180,7 +193,7 @@ public class Main {
         } else {
             StringBuilder sb = new StringBuilder();
             for (String s : titles) {
-                sb.append("➡️ ").append(s).append("\n");
+                sb.append("\uD83D\uDCDD ").append(s).append("\n");
             }
             title = sb.toString();
         }
@@ -323,7 +336,7 @@ public class Main {
         configFrame.dispose();
         SwingWorker worker = new SwingWorker() {
             @Override
-            protected Object doInBackground() throws Exception {
+            protected Object doInBackground() {
                 guiFrame.setVisible(true);
                 guiFrame.invalidate();
 
@@ -333,11 +346,10 @@ public class Main {
 
                 guiFrame.setSize(960, 540);
                 guiFrame.setExtendedState(JFrame.MAXIMIZED_BOTH);
-                int screenshots = 0;
 
                 try {
-                    String DLid = getDLid();
-                    VideoManifest vm = getManifest(DLid);
+                    DLid = getDLid();
+                    vm = getManifest(DLid);
 
                     String background = Config.getBackground();
                     if (background.equals("null")) {
@@ -404,7 +416,6 @@ public class Main {
 
                     //Start by asking the user to pick a post title to be shown in the video.
                     out("Selecting a video title to use...");
-                    int response;
                     if (vm.titles.length == 1) {
                         response = 0;
                     } else {
@@ -424,7 +435,7 @@ public class Main {
                     gui.title.setText("Generating thumbnail");
                     gui.progressLabel.setText("1 / 1");
                     //Make the thumbnail for the video (which is also used in the first comment temp video)
-                    ArrayList<String> thumbnails = new ArrayList<>();
+                    thumbnails = new ArrayList<>();
                     for (VideoManifestComment comment : vm.comments) {
                         if (comment.isTitle) {
                             thumbnails.add(ThumbnailGenerator.generateThumbnail(comment.DLid, comment.text, comment.subreddit));
@@ -437,17 +448,39 @@ public class Main {
                     gui.title.setText("Generating audio track");
                     gui.progressLabel.setText("1 / 1");
                     ArrayList<File> audioFiles = randomizeFilesInFolder(LIBRARY_FOLDER + "/audio");
+                    ArrayList<File> audioFiles2 = new ArrayList<>();
                     ArrayList<String> audioFilesStrings = new ArrayList<>();
                     StringBuilder audioConcatData = new StringBuilder();
-                    for (i = 0; i < audioFiles.size(); i++) {
-                        audioConcatData.append("[").append(i).append(":a]");
-                        audioFilesStrings.add(audioFiles.get(i).getAbsolutePath());
+                    audioCredits = new StringBuilder("\uD83C\uDFB6 Music credits:\n");
+                    double position = 0;
+                    for (File f : audioFiles) {
+                        String len = getOutputFromCommand("\"" + LIBRARY_FOLDER + "/bin/ffprobe.exe\" -v error -select_streams a:0 -show_entries stream=duration -of default=noprint_wrappers=1:nokey=1 \"" + f.getAbsolutePath() + "\"");
+                        double songLength = Double.parseDouble(len);
+                        audioCredits
+                                .append("\uD83C\uDFB5 ")
+                                .append(convertToTimestamp(position))
+                                .append(" ")
+                                .append(f.getName(), 0, f.getName().length() - 4)
+                                .append("\n");
+                        position += songLength;
+                        audioFiles2.add(f);
+                        if (position >= length) break;
                     }
+                    audioCredits
+                            .append("\uD83C\uDFB5 ")
+                            .append(convertToTimestamp(length))
+                            .append(" ")
+                            .append(OUTRO_SONG)
+                            .append("\n");
                     StringBuilder inputAudioFiles = new StringBuilder();
+                    for (i = 0; i < audioFiles2.size(); i++) {
+                        audioConcatData.append("[").append(i).append(":a]");
+                        audioFilesStrings.add(audioFiles2.get(i).getAbsolutePath());
+                    }
                     for (String f : audioFilesStrings) {
                         inputAudioFiles.append("-hwaccel auto -i \"").append(f).append("\" ");
                     }
-                    exec("cmd /c start \"(1/1) Generating Audio Track\" /min /wait \"" + LIBRARY_FOLDER + "/bin/ffmpeg\" " + inputAudioFiles.toString() + " -filter_complex \"" + audioConcatData + "concat=n=" + audioFiles.size() + ":v=0:a=1[outa]\" -map \"[outa]\" -n rvm_audio_" + DLid + ".mp3");
+                    exec("cmd /c start \"(1/1) Generating Audio Track\" /min /wait \"" + LIBRARY_FOLDER + "/bin/ffmpeg\" " + inputAudioFiles.toString() + " -filter_complex \"" + audioConcatData + "concat=n=" + audioFiles2.size() + ":v=0:a=1[outa]\" -map \"[outa]\" -n rvm_audio_" + DLid + ".mp3");
 
                     i = 1;
                     gui.title.setText("Rendering temporary videos");
@@ -576,102 +609,53 @@ public class Main {
 
                     String sr = subreddit.substring(1, subreddit.length() - 1);
                     String videoTitle = sr + " | " + title;
-                    StringBuilder description = new StringBuilder(getDescriptionBlurb(sr, vm.titles) + ((vm.titles.length == 1) ? "\n\nOriginal Post: " + URL : "\n\nOriginal Posts:\n"));
+                    StringBuilder description = new StringBuilder(getDescriptionBlurb(sr, vm.titles) +
+                            ((vm.titles.length == 1) ? "\n\n\uD83D\uDCF0 Original Post: " + URL : "\n\n\uD83D\uDCF0 Original Posts:\n"));
                     if (vm.URLs.length != 1) {
                         for (String url : vm.URLs) {
                             description.append("➡️ ").append(url).append("\n");
                         }
                     }
-                    description.append("\n\n#ExquisiteReddit | #").append(sr.substring(2));
+
+                    int subCount;
+
+                    YouTube youtube = ApiUtils.getService(Collections.singletonList("https://www.googleapis.com/auth/youtube.readonly"));
+                    YouTube.Channels.List request = youtube.channels()
+                            .list("statistics");
+                    ChannelListResponse response = request.setId("UC9yNvUdCqYvfo4qqxiSiKaA").execute();
+                    if (response.getItems().size() > 0) {
+                        subCount = response.getItems().get(0).getStatistics().getSubscriberCount().intValue();
+                    } else {
+                        subCount = 0;
+                    }
+
+                    description
+                            .append("\n\n")
+                            .append(audioCredits.toString())
+                            .append("\n\n\uD83D\uDC26 Make sure to follow us on Twitter at " +
+                                    "https://twitter.com/TweetsExquisite for dank memes and channel updates.");
+                    if (subCount > 0) {
+                        description.append("\n\n\uD83D\uDCAF Thank you all for ").append(subCount).append(" subscribers!");
+                    }
+                    description.append("\n↩️ Make sure to leave your own stories in the comments below! We read and " +
+                            "try to respond to every single comment on our videos.");
+                    description
+                            .append("\n\n#ExquisiteReddit | #")
+                            .append(sr.substring(2));
 
                     gui.timeRemaining.setText("Updating title");
                     while (videoTitle.length() > 100) {
                         videoTitle = requestUserInput("The video title is over 100 characters. Please reformat the title.\nOriginal Title: " + videoTitle);
                     }
 
-                    try {
-                        gui.title.setText("Uploading to YouTube");
-                        gui.timeRemaining.setText("");
-                        gui.progressBar.setIndeterminate(false);
-                        gui.progressBar.setMaximum(100);
-                        gui.progressBar.setValue(0);
-                        String videoId = UploadVideo.main(finalPath, videoTitle, description.toString(), tags);
-                        gui.title.setText("Applying thumbnail");
-                        gui.progressBar.setValue(2);
-                        gui.progressLabel.setText("2 / 2");
-                        SetThumbnail.main(videoId, thumbnails.get(response));
-
-                        out("Upload finished!");
-
-                        boolean openInYTStudio = requestUserYesOrNo("The upload has finished. Would you like to open your " +
-                                "video in YouTube Studio?");
-
-                        if (openInYTStudio) {
-                            new Thread(() -> {
-                                try {
-                                    String url = "https://studio.youtube.com/video/" + videoId + "/edit";
-                                    if (System.getProperty("user.home").equals("C:\\Users\\tntaw"))
-                                        exec("C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe --profile-directory=\"Profile 2\" " + url);
-                                    else Desktop.getDesktop().browse(new URI(url));
-                                } catch (IOException | InterruptedException | URISyntaxException e) {
-                                    e.printStackTrace();
-                                }
-                            }).start();
-                        }
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                        if (e instanceof GoogleJsonResponseException) {
-                            err("Google JSON Response Error: " + e.getMessage() + "\nDetails: " + ((GoogleJsonResponseException) e).getDetails());
-
-                            out("PATH:\n\n" + finalPath + "\n\nTITLE: \n\n" + videoTitle +
-                                    "\n\nDESCRIPTION:\n\n" + description + "\n\nTAGS:\n\n" + tags);
-                        }
-                    } catch (GeneralSecurityException e) {
-                        e.printStackTrace();
-                    }
-
-                    if (requestUserYesOrNo("Move files to archive folder? (Recommended)")) {
-                        //Move all of the temp files to a folder for archival purposes.
-                        gui.title.setText("Cleaning up");
-                        gui.progressLabel.setText("Starting...");
-                        gui.progressBar.setIndeterminate(false);
-                        gui.progressBar.setMaximum(vm.comments.length);
-                        i = 0;
-                        for (VideoManifestComment vmc : vm.comments) {
-                            i++;
-                            gui.progressBar.setValue(i);
-                            gui.progressLabel.setText(i + " / " + vm.comments.length);
-                            moveFile(DOWNLOADS_FOLDER + "/" + vmc.name, OUTPUT_FOLDER + "/Archive/" + vmc.DLid + "/" + vmc.name);
-                            moveFile(DOWNLOADS_FOLDER + "/rvm_temp_" + vmc.DLid + "_thing_" + vmc.thingId + ".mp4", OUTPUT_FOLDER + "/Archive/" + vmc.DLid + "/rvm_temp_" + vmc.DLid + "_thing_" + vmc.thingId + ".mp4");
-                            moveFile(DOWNLOADS_FOLDER + "/rvm_dl_" + vmc.DLid + "_thing_" + vmc.thingId + ".mp3", OUTPUT_FOLDER + "/Archive/" + vmc.DLid + "/rvm_dl_" + vmc.DLid + "_thing_" + vmc.thingId + ".mp3");
-                            if (vmc.isTitle) {
-                                moveFile(DOWNLOADS_FOLDER + "/rvm_final_" + DLid + "_thumbnail.png", OUTPUT_FOLDER + "/Archive/" + DLid + "/rvm_final_" + vmc.DLid + "_thumbnail.png");
-                            }
-                        }
-                        gui.progressBar.setIndeterminate(true);
-                        //Move manifest, final pre-cut video, and final post-cut video
-                        moveFile(DOWNLOADS_FOLDER + "/rvm_manifest_" + DLid + ".json", OUTPUT_FOLDER + "/Archive/" + DLid + "/rvm_manifest_" + DLid + ".json");
-                        moveFile(DOWNLOADS_FOLDER + "/rvm_final_" + DLid + "_precut.mp4", OUTPUT_FOLDER + "/Archive/" + DLid + "/rvm_final_" + DLid + "_precut.mp4");
-                        moveFile(DOWNLOADS_FOLDER + "/rvm_final_" + DLid + "_preoutro.mp4", OUTPUT_FOLDER + "/Archive/" + DLid + "/rvm_final_" + DLid + "_preoutro.mp4");
-                        moveFile(DOWNLOADS_FOLDER + "/rvm_audio_" + DLid + ".mp3", OUTPUT_FOLDER + "/Archive/" + DLid + "/rvm_audio_" + DLid + ".mp3");
-                        moveFile(DOWNLOADS_FOLDER + "/rvm_final_" + DLid + ".mp4", OUTPUT_FOLDER + "/Final/" + DLid + ".mp4");
-                    } else {
-                        out("Moving files skipped. Everything is still in the Downloads folder, which may screw up this program in the future.");
-                    }
-
+                    gui.title.setText("Uploading to YouTube");
+                    gui.timeRemaining.setText("");
                     gui.progressBar.setIndeterminate(false);
-                    gui.progressBar.setMaximum(1);
-                    gui.progressBar.setValue(1);
-                    gui.progressLabel.setText("");
-                    gui.title.setText("Done");
-
-                    // yay~yay~yay
-                    // WE'RE DONE!
-                    // yay~yay~yay
-
-                    out("Everything's done!");
-
-                } catch (IOException | InterruptedException | NullPointerException e) {
+                    gui.progressBar.setMaximum(100);
+                    gui.progressBar.setValue(0);
+                    UploadVideo.main(finalPath, videoTitle, description.toString(), tags);
+                    //The rest of the program is finished in `onVideoIdGathered()`
+                } catch (IOException | InterruptedException | NullPointerException | GeneralSecurityException e) {
                     StringWriter sw = new StringWriter();
                     PrintWriter pw = new PrintWriter(sw);
                     e.printStackTrace(pw);
@@ -680,12 +664,82 @@ public class Main {
                     err(sw.toString());
                 } finally {
                     System.err.println("Main GUI finished executing.");
+                    err("Main GUI finished executing.");
+                    exit(0);
                 }
                 return null;
             }
         };
 
         worker.execute();
+    }
+
+    static void onVideoIdGathered(String videoId) throws GeneralSecurityException, IOException {
+        gui.title.setText("Applying thumbnail");
+        gui.progressBar.setValue(2);
+        gui.progressLabel.setText("2 / 2");
+        SetThumbnail.main(videoId, thumbnails.get(response));
+
+        out("Upload finished!");
+
+        if (requestUserYesOrNo("The upload has finished. Would you like to open your " +
+                "video in YouTube Studio?")) {
+            new Thread(() -> {
+                try {
+                    String url = "https://studio.youtube.com/video/" + videoId + "/edit";
+                    String url2 = "https://www.youtube.com/endscreen?v=" + videoId;
+                    if (System.getProperty("user.home").equals("C:\\Users\\tntaw")) {
+                        exec("C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe --profile-directory=\"Profile 2\" " + url);
+                        exec("C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe --profile-directory=\"Profile 2\" " + url2);
+                    } else {
+                        Desktop.getDesktop().browse(new URI(url));
+                        Desktop.getDesktop().browse(new URI(url2));
+                    }
+                } catch (IOException | InterruptedException | URISyntaxException e) {
+                    e.printStackTrace();
+                }
+            }).start();
+        }
+        if (requestUserYesOrNo("Move files to archive folder? (Recommended)")) {
+            //Move all of the temp files to a folder for archival purposes.
+            gui.title.setText("Cleaning up");
+            gui.progressLabel.setText("Starting...");
+            gui.progressBar.setIndeterminate(false);
+            gui.progressBar.setMaximum(vm.comments.length);
+            int i = 0;
+            for (VideoManifestComment vmc : vm.comments) {
+                i++;
+                gui.progressBar.setValue(i);
+                gui.progressLabel.setText(i + " / " + vm.comments.length);
+                moveFile(DOWNLOADS_FOLDER + "/" + vmc.name, OUTPUT_FOLDER + "/Archive/" + vmc.DLid + "/" + vmc.name);
+                moveFile(DOWNLOADS_FOLDER + "/rvm_temp_" + vmc.DLid + "_thing_" + vmc.thingId + ".mp4", OUTPUT_FOLDER + "/Archive/" + vmc.DLid + "/rvm_temp_" + vmc.DLid + "_thing_" + vmc.thingId + ".mp4");
+                moveFile(DOWNLOADS_FOLDER + "/rvm_dl_" + vmc.DLid + "_thing_" + vmc.thingId + ".mp3", OUTPUT_FOLDER + "/Archive/" + vmc.DLid + "/rvm_dl_" + vmc.DLid + "_thing_" + vmc.thingId + ".mp3");
+                if (vmc.isTitle) {
+                    moveFile(DOWNLOADS_FOLDER + "/rvm_final_" + DLid + "_thumbnail.png", OUTPUT_FOLDER + "/Archive/" + DLid + "/rvm_final_" + vmc.DLid + "_thumbnail.png");
+                }
+            }
+            gui.progressBar.setIndeterminate(true);
+            //Move manifest, final pre-cut video, and final post-cut video
+            moveFile(DOWNLOADS_FOLDER + "/rvm_manifest_" + DLid + ".json", OUTPUT_FOLDER + "/Archive/" + DLid + "/rvm_manifest_" + DLid + ".json");
+            moveFile(DOWNLOADS_FOLDER + "/rvm_final_" + DLid + "_precut.mp4", OUTPUT_FOLDER + "/Archive/" + DLid + "/rvm_final_" + DLid + "_precut.mp4");
+            moveFile(DOWNLOADS_FOLDER + "/rvm_final_" + DLid + "_preoutro.mp4", OUTPUT_FOLDER + "/Archive/" + DLid + "/rvm_final_" + DLid + "_preoutro.mp4");
+            moveFile(DOWNLOADS_FOLDER + "/rvm_audio_" + DLid + ".mp3", OUTPUT_FOLDER + "/Archive/" + DLid + "/rvm_audio_" + DLid + ".mp3");
+            moveFile(DOWNLOADS_FOLDER + "/rvm_final_" + DLid + ".mp4", OUTPUT_FOLDER + "/Final/" + DLid + ".mp4");
+        } else {
+            out("Moving files skipped. Everything is still in the Downloads folder, which may screw up this program in the future.");
+        }
+
+        gui.progressBar.setIndeterminate(false);
+        gui.progressBar.setMaximum(1);
+        gui.progressBar.setValue(1);
+        gui.progressLabel.setText("");
+        gui.title.setText("Done");
+
+        // yay~yay~yay
+        // WE'RE DONE!
+        // yay~yay~yay
+
+        out("Everything's done!");
     }
 
     private static String convertToTimeString(int v) {
@@ -726,9 +780,12 @@ public class Main {
      * @param str The String to output
      */
     static void out(String str) {
+        Date d = new Date();
+        DateFormat dateFormat = new SimpleDateFormat("HH:mm:SS");
+        String date = dateFormat.format(d);
         System.out.println(str);
-        if (getGUI() != null) gui.logArea.append("[out] " + str + "\n");
-        log.append("[out] ").append(str).append("\n");
+        if (getGUI() != null) gui.logArea.append(date + " [out] " + str + "\n");
+        log.append(date).append(" [out] ").append(str).append("\n");
     }
 
     /**
@@ -737,9 +794,12 @@ public class Main {
      * @param str The String to output
      */
     static void err(String str) {
+        Date d = new Date();
+        DateFormat dateFormat = new SimpleDateFormat("HH:mm:SS");
+        String date = dateFormat.format(d);
         System.err.println(str);
-        if (getGUI() != null) gui.logArea.append("[err] " + str + "\n");
-        log.append("[err] ").append(str).append("\n");
+        if (getGUI() != null) gui.logArea.append(date + " [err] " + str + "\n");
+        log.append(date).append(" [err] ").append(str).append("\n");
     }
 
     /**
@@ -827,15 +887,15 @@ public class Main {
             if (ids.size() == 0) return null;
             if (ids.size() == 1) return ids.get(0);
 
-            int response = JOptionPane.showOptionDialog(null,
+            int resp = JOptionPane.showOptionDialog(null,
                     "Choose a Download ID to use: ",
                     "Select an option", JOptionPane.DEFAULT_OPTION, JOptionPane.PLAIN_MESSAGE,
                     null, ids.toArray(new String[]{}), ids.get(0));
-            if (ids.get(response) == null) {
+            if (ids.get(resp) == null) {
                 exit(65);
             }
 
-            return ids.get(response);
+            return ids.get(resp);
         }
         return null;
     }
@@ -853,5 +913,17 @@ public class Main {
         File manifest = new File(Config.getDownloadsFolder() + "/rvm_manifest_" + DLid + ".json");
         Gson gson = new Gson();
         return gson.fromJson(new BufferedReader(new FileReader(manifest)), VideoManifest.class);
+    }
+
+    private static String convertToTimestamp(double timestamp) {
+        int minutes = 0;
+        while (timestamp >= 60) {
+            timestamp -= 60;
+            minutes++;
+        }
+        String seconds = ((int) timestamp) + "";
+        //Pad the seconds with a zero if seconds < 10
+        if (seconds.length() == 1) seconds = "0" + seconds;
+        return minutes + ":" + seconds;
     }
 }

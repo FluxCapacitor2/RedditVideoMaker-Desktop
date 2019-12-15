@@ -1,8 +1,7 @@
 import com.google.api.client.googleapis.media.MediaHttpUploader;
 import com.google.api.client.googleapis.media.MediaHttpUploaderProgressListener;
 import com.google.api.client.http.InputStreamContent;
-import com.google.api.client.json.JsonFactory;
-import com.google.api.client.json.jackson2.JacksonFactory;
+import com.google.api.client.util.DateTime;
 import com.google.api.services.youtube.YouTube;
 import com.google.api.services.youtube.model.Video;
 import com.google.api.services.youtube.model.VideoSnippet;
@@ -19,20 +18,29 @@ class UploadVideo {
     private static final Collection<String> SCOPES =
             Collections.singletonList("https://www.googleapis.com/auth/youtube.upload");
 
-    private static final JsonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
+    private static String filePath;
+    private static String videoTitle;
+    private static String videoDescription;
+    private static List<String> videoTags;
+
 
     /**
      * Call function to create API service object. Define and
      * execute API request. Print API response.
-     *
-     * @return The ID of the newly-uploaded video.
-     * @throws GeneralSecurityException, IOException, GoogleJsonResponseException
      */
-    static String main(String filePath, String videoTitle, String videoDescription, List<String> videoTags)
-            throws GeneralSecurityException, IOException {
+    static void main(String filePath, String videoTitle, String videoDescription, List<String> videoTags) {
+        UploadVideo.filePath = filePath;
+        UploadVideo.videoTitle = videoTitle;
+        UploadVideo.videoDescription = videoDescription;
+        UploadVideo.videoTags = videoTags;
+
+        new UploadScheduler();
+    }
+
+    public static void onDateTimeGathered(DateTime dt) throws IOException, GeneralSecurityException {
         Main.out("Uploading video:\npath=" + filePath + "\ntitle=" + videoTitle + "\ndescription=" + videoDescription +
                 "\ntags=" + videoTags);
-        YouTube youtubeService = ApiUtils.getService(JSON_FACTORY, SCOPES);
+        YouTube youtubeService = ApiUtils.getService(SCOPES);
 
         // Define the Video object, which will be uploaded as the request body.
 
@@ -40,8 +48,13 @@ class UploadVideo {
 
         VideoStatus status = new VideoStatus();
         VideoSnippet snippet = new VideoSnippet();
+        //If it's null, they selected "Don't schedule"
+        if (dt != null) {
+            status.setPublishAt(dt);
+        }
 
         status.setPrivacyStatus("private");
+
 
         //Make sure the title/description doesn't contain demonetized words.
         File f = new File(Config.getLibraryFolder() + "/demonetized_words.txt");
@@ -58,20 +71,6 @@ class UploadVideo {
                                 "Demonetized Word Found", JOptionPane.WARNING_MESSAGE);
                     }
                 }
-                /*
-                if (videoDescription.contains(word)) {
-                    JOptionPane.showMessageDialog(null, "Demonetized word found in video description: \"" + word + "\"",
-                            "Demonetized Word Found", JOptionPane.WARNING_MESSAGE);
-                }
-                StringBuilder tags = new StringBuilder();
-                for (String tag : videoTags) {
-                    tags.append(tag);
-                }
-                if (tags.toString().contains(word)) {
-                    JOptionPane.showMessageDialog(null, "Demonetized word found in video tags: \"" + word + "\"",
-                            "Demonetized Word Found", JOptionPane.WARNING_MESSAGE);
-                }
-                 */
             }
         } else {
             Main.err("WARNING: No demonetized words list was found. Video metadata can not be checked for demonetized words.");
@@ -119,6 +118,6 @@ class UploadVideo {
                 .execute();
 
         Main.out(response.toPrettyString());
-        return response.getId();
+        Main.onVideoIdGathered(response.getId());
     }
 }

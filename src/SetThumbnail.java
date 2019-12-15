@@ -12,12 +12,12 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
-import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 
 public class SetThumbnail {
     private static final Collection<String> SCOPES =
-            Arrays.asList("https://www.googleapis.com/auth/youtube.force-ssl");
+            Collections.singletonList("https://www.googleapis.com/auth/youtube.force-ssl");
 
     private static final String APPLICATION_NAME = "API code samples";
     private static final JsonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
@@ -31,7 +31,7 @@ public class SetThumbnail {
     public static void main(String videoId, String filePath)
             throws GeneralSecurityException, IOException {
 
-        YouTube youtubeService = ApiUtils.getService(JSON_FACTORY, SCOPES);
+        YouTube youtubeService = ApiUtils.getService(SCOPES);
         File mediaFile = new File(filePath);
         InputStreamContent mediaContent =
                 new InputStreamContent("image/png",

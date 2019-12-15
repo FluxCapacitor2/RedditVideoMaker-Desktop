@@ -40,7 +40,7 @@ class ApiUtils {
      * @throws IOException If the client secrets file could not be found, could not be read, or another IO error occured.
      */
     private static Credential authorize(Collection<String> scopes) throws IOException {
-        String CLIENT_SECRETS = Main.LIBRARY_FOLDER + "/bin/client_secrets.json";
+        String CLIENT_SECRETS = Config.getLibraryFolder() + "/bin/client_secrets.json";
         String credentialDatastore = "rvm_yt_data";
         // Load client secrets.
         FileInputStream in = new FileInputStream(CLIENT_SECRETS);
@@ -69,7 +69,7 @@ class ApiUtils {
      * @return an authorized API client service
      * @throws GeneralSecurityException, IOException
      */
-    static YouTube getService(JsonFactory JSON_FACTORY, Collection<String> SCOPES) throws GeneralSecurityException, IOException {
+    static YouTube getService(Collection<String> SCOPES) throws GeneralSecurityException, IOException {
         final NetHttpTransport httpTransport = GoogleNetHttpTransport.newTrustedTransport();
         Credential credential = ApiUtils.authorize(SCOPES);
         return new YouTube.Builder(httpTransport, JSON_FACTORY, credential)
