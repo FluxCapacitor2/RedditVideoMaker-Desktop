@@ -655,7 +655,7 @@ public class Main {
                     gui.progressBar.setValue(0);
                     UploadVideo.main(finalPath, videoTitle, description.toString(), tags);
                     //The rest of the program is finished in `onVideoIdGathered()`
-                } catch (IOException | InterruptedException | NullPointerException | GeneralSecurityException e) {
+                } catch (IOException | InterruptedException | NullPointerException | GeneralSecurityException | IllegalAccessException | NoSuchFieldException e) {
                     StringWriter sw = new StringWriter();
                     PrintWriter pw = new PrintWriter(sw);
                     e.printStackTrace(pw);

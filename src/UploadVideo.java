@@ -28,7 +28,7 @@ class UploadVideo {
      * Call function to create API service object. Define and
      * execute API request. Print API response.
      */
-    static void main(String filePath, String videoTitle, String videoDescription, List<String> videoTags) {
+    static void main(String filePath, String videoTitle, String videoDescription, List<String> videoTags) throws FileNotFoundException, IllegalAccessException, NoSuchFieldException {
         UploadVideo.filePath = filePath;
         UploadVideo.videoTitle = videoTitle;
         UploadVideo.videoDescription = videoDescription;

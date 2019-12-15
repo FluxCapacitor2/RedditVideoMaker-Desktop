@@ -4,9 +4,14 @@ import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.client.util.DateTime;
 import com.google.api.services.youtube.YouTube;
 import com.google.api.services.youtube.model.*;
+import com.google.gson.Gson;
 
 import javax.swing.*;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.security.GeneralSecurityException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
@@ -25,7 +30,7 @@ public class UploadScheduler extends JDialog {
 
     private JFrame f;
 
-    UploadScheduler() {
+    UploadScheduler() throws NoSuchFieldException, IllegalAccessException {
 
         try {
             YouTube youtube = ApiUtils.getService(Collections.singletonList("https://www.googleapis.com/auth/youtube.force-ssl"));
@@ -104,6 +109,65 @@ public class UploadScheduler extends JDialog {
                 Repeats weekly.
                  */
 
+                File schedule = new File(Config.getLibraryFolder() + "/upload_schedule.json");
+                Gson gson = new Gson();
+                UploadSchedule uploadSchedule = gson.fromJson(new FileReader(schedule), UploadSchedule.class);
+
+                int latestHour = cal.get(Calendar.HOUR_OF_DAY);
+                int latestMinute = cal.get(Calendar.MINUTE);
+                int dayOfWeek = cal.get(Calendar.DAY_OF_WEEK);
+                int dayOfMonth = cal.get(Calendar.DAY_OF_MONTH);
+
+                String[] weekDays = new String[]{"", "SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"};
+                String weekDay = weekDays[dayOfWeek];
+                Field field = uploadSchedule.getClass().getDeclaredField(weekDay);
+                String[] data = (String[]) field.get(uploadSchedule);
+
+                String latestTimeFormatted = latestHour + ":" + (latestMinute < 10 ? "0" : "") + latestMinute;
+                Main.out("Looking for " + latestTimeFormatted + " (" + cal.get(Calendar.DAY_OF_WEEK) + ") in upload_schedule.json...");
+                Main.out("Found data for " + weekDay + ": " + Arrays.toString(data));
+                Main.out("Latest video: " + cal.getTime());
+
+                Date p = null;
+
+                int j = 0;
+                for (String time : data) {
+                    j++;
+                    if (time.equals(latestTimeFormatted)) {
+                        //We found where the latest video is on our schedule.
+                        //Now, find where the next video should be.
+                        int index;
+                        Main.out("j = " + j);
+                        Main.out("time = " + time);
+                        Main.out("latestTimeFormatted = " + latestTimeFormatted);
+                        if (j >= data.length) {
+                            //Go to the next day.
+                            dayOfMonth++;
+                            dayOfWeek++;
+                            if (dayOfWeek > 7) dayOfWeek = 1;
+                            Main.out("Choosing the first time of the next day (" + weekDays[dayOfWeek] + ").");
+                            index = 0;
+                        } else {
+                            Main.out("Choosing the next time of the current day (" + weekDay + " at " + data[j] + ").");
+                            index = j;
+                        }
+                        Field f2 = uploadSchedule.getClass().getDeclaredField(weekDays[dayOfWeek]);
+                        String[] d2 = (String[]) f2.get(uploadSchedule);
+                        Main.out("Found data for " + weekDays[dayOfWeek] + ": " + Arrays.toString(d2));
+                        Main.out("Currently looking at scheduling the video for " + weekDays[dayOfWeek] + " at " + d2[index]);
+                        cal.set(Calendar.DAY_OF_WEEK, dayOfWeek);
+                        cal.set(Calendar.DAY_OF_MONTH, dayOfMonth);
+                        cal.set(Calendar.HOUR_OF_DAY, Integer.parseInt(d2[index].split(":")[0]));
+                        cal.set(Calendar.MINUTE, Integer.parseInt(d2[index].split(":")[1]));
+                        p = cal.getTime();
+                        break;
+                    }
+                }
+
+                /*
+
+                OLD, HARDCODED PREDICTION ALGORITHM REPLACED BY CONFIGURABLE ONE ABOVE
+
                 int dow = cal.get(Calendar.DAY_OF_WEEK);
                 if (dow == Calendar.SUNDAY || dow == Calendar.FRIDAY || dow == Calendar.SATURDAY) {
                     //If the latest video is scheduled for a weekend, then...
@@ -150,13 +214,13 @@ public class UploadScheduler extends JDialog {
                         prediction = cal.getTime();
                     }
                 }
+                */
                 /*
                 Dialog is disabled because it sometimes doesn't show up
                 (and the prediction is mostly reliable).
-                vv
                  */
-                if (prediction == null) UploadVideo.onDateTimeGathered(null);
-                else UploadVideo.onDateTimeGathered(new DateTime(prediction));
+                if (p == null) UploadVideo.onDateTimeGathered(null);
+                else UploadVideo.onDateTimeGathered(new DateTime(p));
                 /*
                 StringBuilder queueString = new StringBuilder("<table><thead><tr><th>Position</th><th>Video Title</th>" +
                         "<th>Privacy Status</th><th>Publish Date</th></tr></thead><tbody>");
@@ -236,7 +300,9 @@ public class UploadScheduler extends JDialog {
                 Main.err("Google JSON Response Error: " + e.getMessage() + "\nDetails: " + ((GoogleJsonResponseException) e).getDetails());
             }
             Main.err("Error with video scheduler: " + e.getMessage());
-        }
+        }/* catch (NoSuchFieldException | IllegalAccessException e) {
+            e.printStackTrace();
+        }*/
 
         doneBtn.addActionListener(event -> {
             try {
@@ -254,7 +320,7 @@ public class UploadScheduler extends JDialog {
         });
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws FileNotFoundException, IllegalAccessException, NoSuchFieldException {
         new UploadScheduler();
     }
 
