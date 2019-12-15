@@ -601,7 +601,9 @@ public class Main {
                                 break;
                             }
                             //If this is still running than we haven't reached the limit yet, add the tag to the list.
-                            tags.add(s);
+                            //Make sure we remove punctuation or else YouTube will parse the tags wrong and they will be
+                            //all combined into one "metatag"
+                            tags.add(s.replaceAll("[,?!.\\-=()`~\\[\\]{}*/<>]", ""));
                         }
                     }
                     //tags.addAll(Arrays.asList(title.split(" ")));
