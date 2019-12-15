@@ -619,7 +619,7 @@ public class Main {
 
                     int subCount;
 
-                    YouTube youtube = ApiUtils.getService(Collections.singletonList("https://www.googleapis.com/auth/youtube.readonly"));
+                    YouTube youtube = ApiUtils.getService();
                     YouTube.Channels.List request = youtube.channels()
                             .list("statistics");
                     ChannelListResponse response = request.setId("UC9yNvUdCqYvfo4qqxiSiKaA").execute();

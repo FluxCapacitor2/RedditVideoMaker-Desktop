@@ -15,9 +15,14 @@ import com.google.api.services.youtube.YouTube;
 
 import java.io.*;
 import java.security.GeneralSecurityException;
+import java.util.Arrays;
 import java.util.Collection;
 
 class ApiUtils {
+    private static final Collection<String> SCOPES =
+            Arrays.asList("https://www.googleapis.com/auth/youtube.upload",
+                    "https://www.googleapis.com/auth/youtube.force-ssl",
+                    "https://www.googleapis.com/auth/youtube.readonly");
     /**
      * Define a global instance of the HTTP transport.
      */
@@ -32,6 +37,8 @@ class ApiUtils {
      * This is the directory that will be used under the user's home directory where OAuth tokens will be stored.
      */
     private static final String CREDENTIALS_DIRECTORY = ".oauth-credentials";
+
+    private static YouTube service = null;
 
     /**
      * Create an authorized Credential object.
@@ -69,11 +76,18 @@ class ApiUtils {
      * @return an authorized API client service
      * @throws GeneralSecurityException, IOException
      */
-    static YouTube getService(Collection<String> SCOPES) throws GeneralSecurityException, IOException {
-        final NetHttpTransport httpTransport = GoogleNetHttpTransport.newTrustedTransport();
-        Credential credential = ApiUtils.authorize(SCOPES);
-        return new YouTube.Builder(httpTransport, JSON_FACTORY, credential)
-                .setApplicationName("RedditVideoMaker")
-                .build();
+    static YouTube getService() throws GeneralSecurityException, IOException {
+        if (service != null) {
+            Main.out("YouTube service instance already exists! Returning previously-generated service.");
+            return service;
+        } else {
+            Main.out("Generating new YouTube service...");
+            final NetHttpTransport httpTransport = GoogleNetHttpTransport.newTrustedTransport();
+            Credential credential = ApiUtils.authorize(SCOPES);
+            service = new YouTube.Builder(httpTransport, JSON_FACTORY, credential)
+                    .setApplicationName("RedditVideoMaker")
+                    .build();
+            return service;
+        }
     }
 }

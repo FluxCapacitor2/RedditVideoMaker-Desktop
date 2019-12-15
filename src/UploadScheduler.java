@@ -33,7 +33,8 @@ public class UploadScheduler extends JDialog {
     UploadScheduler() throws NoSuchFieldException, IllegalAccessException {
 
         try {
-            YouTube youtube = ApiUtils.getService(Collections.singletonList("https://www.googleapis.com/auth/youtube.force-ssl"));
+            YouTube youtube = ApiUtils.getService();
+            System.out.println("youtube = " + youtube.search().list("id"));
             YouTube.Search.List request = youtube.search()
                     .list("id");
             SearchListResponse response = request

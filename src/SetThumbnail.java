@@ -1,8 +1,6 @@
 import com.google.api.client.googleapis.media.MediaHttpUploader;
 import com.google.api.client.googleapis.media.MediaHttpUploaderProgressListener;
 import com.google.api.client.http.InputStreamContent;
-import com.google.api.client.json.JsonFactory;
-import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.services.youtube.YouTube;
 import com.google.api.services.youtube.model.ThumbnailSetResponse;
 
@@ -19,9 +17,6 @@ public class SetThumbnail {
     private static final Collection<String> SCOPES =
             Collections.singletonList("https://www.googleapis.com/auth/youtube.force-ssl");
 
-    private static final String APPLICATION_NAME = "API code samples";
-    private static final JsonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
-
     /**
      * Call function to create API service object. Define and
      * execute API request. Print API response.
@@ -31,7 +26,7 @@ public class SetThumbnail {
     public static void main(String videoId, String filePath)
             throws GeneralSecurityException, IOException {
 
-        YouTube youtubeService = ApiUtils.getService(SCOPES);
+        YouTube youtubeService = ApiUtils.getService();
         File mediaFile = new File(filePath);
         InputStreamContent mediaContent =
                 new InputStreamContent("image/png",

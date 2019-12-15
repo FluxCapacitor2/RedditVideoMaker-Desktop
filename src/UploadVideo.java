@@ -10,14 +10,9 @@ import com.google.api.services.youtube.model.VideoStatus;
 import javax.swing.*;
 import java.io.*;
 import java.security.GeneralSecurityException;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 
 class UploadVideo {
-    private static final Collection<String> SCOPES =
-            Collections.singletonList("https://www.googleapis.com/auth/youtube.upload");
-
     private static String filePath;
     private static String videoTitle;
     private static String videoDescription;
@@ -40,7 +35,7 @@ class UploadVideo {
     public static void onDateTimeGathered(DateTime dt) throws IOException, GeneralSecurityException {
         Main.out("Uploading video:\npath=" + filePath + "\ntitle=" + videoTitle + "\ndescription=" + videoDescription +
                 "\ntags=" + videoTags);
-        YouTube youtubeService = ApiUtils.getService(SCOPES);
+        YouTube youtubeService = ApiUtils.getService();
 
         // Define the Video object, which will be uploaded as the request body.
 
