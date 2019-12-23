@@ -103,7 +103,9 @@
             <children>
               <component id="a6309" class="javax.swing.JTextArea" binding="logArea">
                 <constraints/>
-                <properties/>
+                <properties>
+                  <font name="Courier New"/>
+                </properties>
               </component>
             </children>
           </scrollpane>

@@ -97,15 +97,15 @@ public class UploadScheduler extends JDialog {
                 /*
                 U P L O A D   S C H E D U L E
                 as of 12/13/19
-                ==== == == == == ====
-                Sunday    - 2pm - 4pm
-                Monday    -     - 4pm
-                Tuesday   -     - 4pm
-                Wednesday -     - 4pm
-                Thursday  -     - 4pm
-                Friday    - 2pm - 4pm
-                Saturday  - 2pm - 4pm
-                ==== == == == == ====
+                ==== == == == === ====
+                Sunday    - 10am - 6pm
+                Monday    - 10am - 6pm
+                Tuesday   - 10am - 6pm
+                Wednesday - 10am - 6pm
+                Thursday  - 10am - 6pm
+                Friday    - 10am - 6pm
+                Saturday  - 10am - 6pm
+                ==== == == == === ====
 
                 Repeats weekly.
                  */

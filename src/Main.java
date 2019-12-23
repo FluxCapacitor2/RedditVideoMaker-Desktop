@@ -32,7 +32,7 @@ public class Main {
      * These fields are configurable with command-line arguments.
      */
     static String LIBRARY_FOLDER;
-    static String DOWNLOADS_FOLDER;
+    private static String DOWNLOADS_FOLDER;
     /**
      * The GUI class for the swing window.
      * This is used to create the swing window (JFrame),
@@ -200,7 +200,8 @@ public class Main {
 
         Map<String, String> descs = new HashMap<>();
         int n = titles.length;
-        descs.put("r/AskReddit", "Welcome to r/AskReddit, where redditors answer the " + pluralize(n, "question", "questions"));
+        descs.put("r/AskReddit", "Welcome to r/AskReddit, where redditors answer the "
+                + pluralize(n, "question", "questions"));
         descs.put("r/ProRevenge", "Welcome to r/ProRevenge, where redditors share their stories of going out" +
                 " of their way to get revenge. Today's " + pluralize(n, "story", "stories"));
         descs.put("r/pettyrevenge", "Welcome to r/PettyRevenge, where redditors talk about their experiences " +
@@ -215,7 +216,12 @@ public class Main {
                 "stories from working in IT or other similar technology jobs. Today's " + pluralize(n, "story", "stories"));
         descs.put("r/TalesFromRetail", "Welcome to r/TalesFromRetail, where redditors share their " +
                 "stories from working in retail or other similar service jobs. Today's " + pluralize(n, "story", "stories"));
-        return descs.get(sr) + ":" + pluralize(n, " ", "\n") + title;
+        descs.put("r/entitledparents", "Welcome to r/EntitledParents, where redditors share their stories of dealing " +
+                "with entitled parents who think the world caters to them. Today's " + pluralize(n, "story", "stories"));
+        descs.put("r/StoriesAboutKevin", "Welcome to r/StoriesAboutKevin, where redditors post stories of \"Kevins\", " +
+                "people that are absolutely braindead and probably couldn't survive on their own. Today's " +
+                pluralize(n, "story", "stories"));
+        return descs.getOrDefault(sr, "Welcome to " + sr + ". Today's " + pluralize(n, "story", "stories")) + ":" + pluralize(n, " ", "\n") + title;
     }
 
     private static String pluralize(int n, String singular, String plural) {
@@ -442,6 +448,14 @@ public class Main {
                         }
                     }
 
+                    String sr = subreddit.substring(1, subreddit.length() - 1);
+                    String videoTitle = sr + " | " + title;
+
+                    gui.timeRemaining.setText("Updating title");
+                    while (videoTitle.length() > 100) {
+                        videoTitle = requestUserInput("The video title is over 100 characters. Please reformat the title.\nOriginal Title: " + videoTitle);
+                    }
+
                     //Generate music track
                     out("Generating music track...");
                     gui.progressBar.setIndeterminate(true);
@@ -480,7 +494,7 @@ public class Main {
                     for (String f : audioFilesStrings) {
                         inputAudioFiles.append("-hwaccel auto -i \"").append(f).append("\" ");
                     }
-                    exec("cmd /c start \"(1/1) Generating Audio Track\" /min /wait \"" + LIBRARY_FOLDER + "/bin/ffmpeg\" " + inputAudioFiles.toString() + " -filter_complex \"" + audioConcatData + "concat=n=" + audioFiles2.size() + ":v=0:a=1[outa]\" -map \"[outa]\" -n rvm_audio_" + DLid + ".mp3");
+                    exec("cmd /c start \"(1/1) Generating Audio Track\" /min /wait \"" + LIBRARY_FOLDER + "/bin/ffmpeg\" " + inputAudioFiles.toString() + " -filter_complex \"" + audioConcatData + "concat=n=" + audioFiles2.size() + ":v=0:a=1[outa]\" -map \"[outa]\" -y rvm_audio_" + DLid + ".mp3");
 
                     i = 1;
                     gui.title.setText("Rendering temporary videos");
@@ -508,10 +522,32 @@ public class Main {
                             if (comment.isTitle) {
                                 png = Main.DOWNLOADS_FOLDER + "/rvm_final_" + comment.DLid + "_thumbnail.png";
                             }
-                            String com = "\"" + LIBRARY_FOLDER + "/bin/ffprobe.exe\" -v error -select_streams a:0 -show_entries stream=duration -of default=noprint_wrappers=1:nokey=1 -sexagesimal \"" + DOWNLOADS_FOLDER + "/rvm_dl_" + comment.DLid + "_thing_" + comment.thingId + ".mp3\"";
-                            String videoLength = getOutputFromCommand(com);
+                            //String com = "\"" + LIBRARY_FOLDER + "/bin/ffprobe.exe\" -v error -select_streams a:0 -show_entries stream=duration -of default=noprint_wrappers=1:nokey=1 -sexagesimal \"" + DOWNLOADS_FOLDER + "/rvm_dl_" + comment.DLid + "_thing_" + comment.thingId + ".mp3\"";
+                            //String videoLength = getOutputFromCommand(com);
                             //Cut everything to the length of the audio because `-shortest` is very buggy in this scenario.
-                            String cmd = "cmd /c start \"(" + i + "/" + vm.comments.length + ") Generating Temporary Videos\" /min /wait \"" + LIBRARY_FOLDER + "/bin/ffmpeg\" -t " + videoLength + " -i \"" + background + "\" -hwaccel auto -t " + videoLength + " -i \"" + mp3 + "\" -r 1 -hwaccel auto -i \"" + png + "\" -filter_complex \"[0:v]boxblur=10:5 [bblur], [2:v]scale=1920:-1 [" + (comment.isTitle ? "ovrl1" : "ovrl") + "]," + (comment.isTitle ? "[ovrl1]colorkey=0x292929:0.05:0.1[ovrl]," : "") + "[bblur][ovrl]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2\" -acodec copy -map 1:a -c:a aac -shortest -r 30 -n " + out;
+                            /*
+                            String cmd = "cmd /c start \"(" + i + "/" + vm.comments.length + ") Generating Temporary Videos\" " +
+                                    "/min /wait \"" + LIBRARY_FOLDER + "/bin/ffmpeg\""// -t " + videoLength
+                                    + " -hwaccel nvdec -i \"" + background + "\" -hwaccel auto "//-t "+ videoLength
+                                    +"-i \"" + mp3 + "\" -r 1 -hwaccel auto -i \"" + png + "\" -filter_complex \"" +
+                                    "[0:v]boxblur=10:5 [bblur], [2:v]scale=1920:-1 [" + (comment.isTitle ? "ovrl1" : "ovrl") +
+                                    "]," + (comment.isTitle ? "[ovrl1]colorkey=0x292929:0.05:0.1[ovrl]," : "") +
+                                    "[bblur][ovrl]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2\" -acodec copy -map " +
+                                    "1:a -c:a aac -pix_fmt nv12 -c:v h264_nvenc -shortest -r 30 -n " + out;
+                            */
+                            String cmd;
+                            if (comment.isTitle) {
+                                cmd = "cmd /c start \"RVM\" /min /wait \"" + LIBRARY_FOLDER + "/bin/ffmpeg\" -hwaccel nvdec -i \"" + mp3 + "\" " +
+                                        "-hwaccel nvdec -i \"" + background + "\" -r 1 -hwaccel nvdec -i \"" + png + "\" " +
+                                        "-filter_complex \"[2:v]scale=1920:-1[ss1];[ss1]colorkey=0x292929:0.05:0.1[ss];" +
+                                        "[1:v][ss]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2\"" +
+                                        " -c:v h264_nvenc -map 0:a -shortest -y \"" + out + "\"";
+                            } else {
+                                cmd = "cmd /c start \"RVM\" /min /wait \"" + LIBRARY_FOLDER + "/bin/ffmpeg\" -hwaccel nvdec -i \"" + mp3 + "\" " +
+                                        "-hwaccel nvdec -i \"" + background + "\" -r 1 -hwaccel nvdec -i \"" + png + "\" " +
+                                        "-filter_complex \"[2:v]scale=1920:-1[ss];[1:v][ss]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2\"" +
+                                        " -c:v h264_nvenc -map 0:a -shortest -y \"" + out + "\"";
+                            }
                             exec(cmd);
                             long cmdEndTime = new Date().getTime();
                             long cmdTime = (cmdEndTime - cmdStartTime);
@@ -562,24 +598,24 @@ public class Main {
                     gui.progressBar.setIndeterminate(true);
                     gui.progressBar.setMaximum(3);
                     gui.progressBar.setValue(1);
-                    gui.progressLabel.setText("1 / 3");
+                    gui.progressLabel.setText("1 / 2");
 
                     String audioFile = "rvm_audio_" + DLid + ".mp3";
                     //After all if the individual videos are made, concatenate them into one.
-                    exec("cmd /c start \"(1/3) Combining Final Video\" /min /wait \"" + LIBRARY_FOLDER + "/bin/ffmpeg\" -i " + String.join(" -i ", outputFiles) + " -i " + audioFile + " -filter_complex \"" + concatData + "concat=n=" + outputFiles.size() + ":v=1:a=1[outv][outa];[outa]aformat=sample_fmts=fltp:sample_rates=22050:channel_layouts=stereo[a1];[" + outputFiles.size() + ":0]aformat=sample_fmts=fltp:sample_rates=22050:channel_layouts=stereo[a2];[a2]volume=-20.0dB[a2adj];[a1]volume=5.0dB[a1adj];[a1adj][a2adj]amerge=inputs=2[apresync];[apresync]aresample=async=1000[afinal];[outv]mpdecimate[vfinal]\" -map \"[vfinal]\" -map \"[afinal]\" -vsync 2 -shortest -n -r 30 rvm_final_" + DLid + "_precut.mp4");
+                    exec("cmd /c start \"(1/2) Combining Final Video\" /min /wait \"" + LIBRARY_FOLDER + "/bin/ffmpeg\" -i " + String.join(" -i ", outputFiles) + " -hwaccel nvdec -i " + audioFile + " -filter_complex \"" + concatData + "concat=n=" + outputFiles.size() + ":v=1:a=1[outv][outa];[outa]aformat=sample_fmts=fltp:sample_rates=22050:channel_layouts=stereo[a1];[" + outputFiles.size() + ":0]aformat=sample_fmts=fltp:sample_rates=22050:channel_layouts=stereo[a2];[a2]volume=-20.0dB[a2adj];[a1]volume=5.0dB[a1adj];[a1adj][a2adj]amerge=inputs=2[apresync];[apresync]aresample=async=1000[afinal];[outv]mpdecimate[vfinal]\" -map \"[vfinal]\" -map \"[afinal]\" -vsync 2 -c:v h264_nvenc -shortest -n -r 30 rvm_final_" + DLid + "_preoutro.mp4");
                     gui.progressBar.setValue(2);
-                    gui.progressLabel.setText("2 / 3");
-                    String com = "\"" + LIBRARY_FOLDER + "/bin/ffprobe.exe\" -v error -select_streams v:0 -show_entries stream=duration -of default=noprint_wrappers=1:nokey=1 -sexagesimal rvm_final_" + DLid + "_precut.mp4";
+                    gui.progressLabel.setText("2 / 2");
+                    //String com = "\"" + LIBRARY_FOLDER + "/bin/ffprobe.exe\" -v error -select_streams v:0 -show_entries stream=duration -of default=noprint_wrappers=1:nokey=1 -sexagesimal rvm_final_" + DLid + "_precut.mp4";
 
                     String finalPath = DOWNLOADS_FOLDER + "/rvm_final_" + DLid + ".mp4";
 
                     //Cut the video to the length of the longest video stream (workaround for an ffmpeg but where `-shortest` doesn't work on audio)
-                    exec("cmd /c start \"(2/3) Combining Final Video\" /min /wait \"" + LIBRARY_FOLDER + "/bin/ffmpeg\" -hwaccel auto -i rvm_final_" + DLid + "_precut.mp4 -to " + getOutputFromCommand(com) + " -c copy -n rvm_final_" + DLid + "_preoutro.mp4");
+                    //exec("cmd /c start \"(2/2) Combining Final Video\" /min /wait \"" + LIBRARY_FOLDER + "/bin/ffmpeg\" -hwaccel auto -i rvm_final_" + DLid + "_precut.mp4 -to " + getOutputFromCommand(com) + " -c copy -c:v h264_nvenc -n rvm_final_" + DLid + "_preoutro.mp4");
                     String outro = randomizeFilesInFolder(LIBRARY_FOLDER + "/outros").get(0).getAbsolutePath();
-                    gui.progressLabel.setText("3 / 3");
+                    gui.progressLabel.setText("2 / 2");
                     gui.progressBar.setValue(3);
                     //Add the outro to the fixed video.
-                    exec("cmd /c start \"(3/3) Combining Final Video\" /min /wait \"" + LIBRARY_FOLDER + "/bin/ffmpeg\" -hwaccel auto -i rvm_final_" + DLid + "_preoutro.mp4 -i " + outro + " -filter_complex \"[0:0][0:1][1:0][1:1]concat=n=2:v=1:a=1[preVideo][preAudio];[preAudio]loudnorm[audio1];[audio1]volume=10.0dB[audio2]\" -map \"[preVideo]\" -map \"[audio2]\" -n \"" + finalPath + "\"");
+                    exec("cmd /c start \"(2/2) Combining Final Video\" /min /wait \"" + LIBRARY_FOLDER + "/bin/ffmpeg\" -hwaccel nvdec -i rvm_final_" + DLid + "_preoutro.mp4 -hwaccel nvdec -i " + outro + " -filter_complex \"[0:0][0:1][1:0][1:1]concat=n=2:v=1:a=1[preVideo][preAudio];[preAudio]loudnorm[audio1];[audio1]volume=10.0dB[audio2]\" -map \"[preVideo]\" -map \"[audio2]\" -n -c:v h264_nvenc \"" + finalPath + "\"");
 
                     //Upload the video to YouTube
                     gui.progressBar.setIndeterminate(true);
@@ -609,8 +645,6 @@ public class Main {
                     //tags.addAll(Arrays.asList(title.split(" ")));
                     out("Setting video tags: " + tags.toString());
 
-                    String sr = subreddit.substring(1, subreddit.length() - 1);
-                    String videoTitle = sr + " | " + title;
                     StringBuilder description = new StringBuilder(getDescriptionBlurb(sr, vm.titles) +
                             ((vm.titles.length == 1) ? "\n\n\uD83D\uDCF0 Original Post: " + URL : "\n\n\uD83D\uDCF0 Original Posts:\n"));
                     if (vm.URLs.length != 1) {
@@ -645,10 +679,8 @@ public class Main {
                             .append("\n\n#ExquisiteReddit | #")
                             .append(sr.substring(2));
 
-                    gui.timeRemaining.setText("Updating title");
-                    while (videoTitle.length() > 100) {
-                        videoTitle = requestUserInput("The video title is over 100 characters. Please reformat the title.\nOriginal Title: " + videoTitle);
-                    }
+                    description.append("\n\nPosts and comments may be edited for clarity or length. " +
+                            "We make no guarantee on the validity of the content showcased in our videos.");
 
                     gui.title.setText("Uploading to YouTube");
                     gui.timeRemaining.setText("");
