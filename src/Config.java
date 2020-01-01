@@ -18,7 +18,7 @@ class Config {
     }
 
     static String getRandomBackground() {
-        return Main.randomizeFilesInFolder(Main.LIBRARY_FOLDER + "/backgrounds/").get(0).getAbsolutePath();
+        return Main.randomizeFilesInFolder(getLibraryFolder() + "/backgrounds/").get(0).getAbsolutePath();
     }
 
     static boolean getAlwaysOnTop() {

@@ -10,7 +10,6 @@ public class Options {
     JPanel frame;
     JButton saveAndStartBtn;
     JCheckBox alwaysOnTop;
-    JCheckBox calcLength;
     JComboBox<String> bg;
     JButton closeBtn;
     JTextField dlFolder;
@@ -58,8 +57,6 @@ public class Options {
         outFolder.setText(Config.getOutputFolder());
         //ALWAYS ON TOP
         alwaysOnTop.setSelected(Config.getAlwaysOnTop());
-        //CALCULATE VIDEO LENGTH
-        calcLength.setSelected(Config.getCalcLength());
 
         JFileChooser fc = new JFileChooser();
         fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
@@ -142,10 +139,6 @@ public class Options {
         Always On Top
          */
         Config.setAlwaysOnTop(alwaysOnTop.isSelected());
-        /*
-        Calculate Video Length
-         */
-        Config.setCalcLength(calcLength.isSelected());
         //Done saving settings!
         Main.out("Settings saved.");
         //Now start RVM.

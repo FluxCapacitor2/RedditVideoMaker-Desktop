@@ -1,3 +1,5 @@
+import com.github.kokorin.jaffree.LogLevel;
+import com.github.kokorin.jaffree.ffmpeg.*;
 import com.google.api.services.youtube.YouTube;
 import com.google.api.services.youtube.model.ChannelListResponse;
 import com.google.gson.Gson;
@@ -29,11 +31,6 @@ import java.util.regex.Pattern;
 public class Main {
     private static final String OUTRO_SONG = "New Land by ALBIS";
     /**
-     * These fields are configurable with command-line arguments.
-     */
-    static String LIBRARY_FOLDER;
-    private static String DOWNLOADS_FOLDER;
-    /**
      * The GUI class for the swing window.
      * This is used to create the swing window (JFrame),
      * which displays the current action, progress,
@@ -42,7 +39,6 @@ public class Main {
      * @see Rendering The host class for the main GUI of this app.
      */
     static Rendering gui = null;
-    private static String OUTPUT_FOLDER;
     static JFrame configFrame;
     /**
      * The JFrame object that represents the window
@@ -109,17 +105,17 @@ public class Main {
 
             @Override
             void onDownloadsFolderChanged(String newValue) {
-                DOWNLOADS_FOLDER = newValue;
+
             }
 
             @Override
             void onLibraryFolderChanged(String newValue) {
-                LIBRARY_FOLDER = newValue;
+
             }
 
             @Override
             void onOutputFolderChanged(String newValue) {
-                OUTPUT_FOLDER = newValue;
+
             }
         });
 
@@ -241,7 +237,7 @@ public class Main {
      */
     private static String getOutputFromCommand(String com) throws IOException, InterruptedException {
         out("> " + com);
-        Process proc = Runtime.getRuntime().exec(com, null, new File(DOWNLOADS_FOLDER));
+        Process proc = Runtime.getRuntime().exec(com, null, new File(Config.getDownloadsFolder()));
         String line;
         String output = null;
         BufferedReader bf = new BufferedReader(new InputStreamReader(proc.getInputStream()));
@@ -269,7 +265,7 @@ public class Main {
         return files;
     }
 
-    static boolean requestUserYesOrNo(String label) {
+    private static boolean requestUserYesOrNo(String label) {
         return JOptionPane.showConfirmDialog(getGUI(), label) == JOptionPane.YES_OPTION;
     }
 
@@ -299,9 +295,9 @@ public class Main {
      * @throws IOException          If there was an IO error running the process.
      * @throws InterruptedException If the process thread is interrupted.
      */
-    private static void exec(String com) throws IOException, InterruptedException {
+    static void exec(String com) throws IOException, InterruptedException {
         out("> " + com);
-        Process process = Runtime.getRuntime().exec(com, null, new File(DOWNLOADS_FOLDER));
+        Process process = Runtime.getRuntime().exec(com, null, new File(Config.getDownloadsFolder()));
         String line;
         BufferedReader stdIn = new BufferedReader(new InputStreamReader(process.getInputStream()));
         while ((line = stdIn.readLine()) != null) {
@@ -346,10 +342,6 @@ public class Main {
                 guiFrame.setVisible(true);
                 guiFrame.invalidate();
 
-                DOWNLOADS_FOLDER = Config.getDownloadsFolder();
-                LIBRARY_FOLDER = Config.getLibraryFolder();
-                OUTPUT_FOLDER = Config.getOutputFolder();
-
                 guiFrame.setSize(960, 540);
                 guiFrame.setExtendedState(JFrame.MAXIMIZED_BOTH);
 
@@ -368,7 +360,7 @@ public class Main {
                     gui.progressBar.setMaximum(vm.comments.length);
                     gui.progressBar.setIndeterminate(false);
                     gui.title.setText("Starting up");
-                    gui.progressLabel.setText("Starting...");
+                    gui.progressLabel.setText("0%");
 
                     //Generate TTS audio using Balabolka's command-line API + our SAPI5 voice (Daniel English-UK)
                     //Also find the approximate length of the video given all of the audio clips.
@@ -378,23 +370,23 @@ public class Main {
                         i++;
                         gui.progressBar.setValue(i);
                         gui.progressLabel.setText(i + " / " + vm.comments.length);
-                        String outputFile = DOWNLOADS_FOLDER + "/rvm_dl_" + c.DLid + "_thing_" + c.thingId + ".mp3";
+                        String outputFile = Config.getDownloadsFolder() + "/rvm_dl_" + c.DLid + "_thing_" + c.thingId + ".mp3";
                         if (!new File(outputFile).exists()) {
                             String escapedText = c.text.replace("\"", ", ").replace("\n", ", "); //Replace quotes with commas for a similar effect w/o screwing up the program
-                            exec(LIBRARY_FOLDER + "/bin/balcon/balcon.exe -n \"ScanSoft Daniel_Full_22kHz\" -t \"" + escapedText + "\" -w \"" + outputFile + "\" -sb 100 -fr 48 -bt 16 -ch 2 -v 60");
+                            exec(Config.getLibraryFolder() + "/bin/balcon/balcon.exe -n \"ScanSoft Daniel_Full_22kHz\" -t \"" + escapedText + "\" -w \"" + outputFile + "\" -sb 100 -fr 48 -bt 16 -ch 2 -v 60");
                         } else {
                             out(outputFile + " already exists! Skipping...");
                         }
-                        if (Config.getCalcLength()) {
-                            length += Double.parseDouble(getOutputFromCommand("\"" + LIBRARY_FOLDER + "/bin/ffprobe.exe\" -v error -select_streams a:0 -show_entries stream=duration -of default=noprint_wrappers=1:nokey=1 \"" + DOWNLOADS_FOLDER + "/rvm_dl_" + c.DLid + "_thing_" + c.thingId + ".mp3\""));
-                        }
+                        //if (Config.getCalcLength()) {
+                        length += Double.parseDouble(getOutputFromCommand("\"" + Config.getLibraryFolder() + "/bin/ffprobe.exe\" -v error -select_streams a:0 -show_entries stream=duration -of default=noprint_wrappers=1:nokey=1 \"" + Config.getDownloadsFolder() + "/rvm_dl_" + c.DLid + "_thing_" + c.thingId + ".mp3\""));
+                        //}
                         calculateRemainingTime(startTime1, vm.comments.length, i);
                     }
                     gui.timeRemaining.setText("Waiting for confirmation");
 
                     //Request confirmation to start rendering the videos/audio track/thumbnail.
                     boolean result = requestUserYesOrNo("Proceed?\n\nVideo Length: " +
-                            (Config.getCalcLength() ? convertToTimeString((int) (length + 20)) : "(Not enabled)") +
+                            convertToTimeString((int) (length + 20)) +
                             "\nBackground: " + background + "\nComments: " + (vm.comments.length - 1)
                             + "\nTitle(s): " + Arrays.toString(vm.titles) + "\nSubreddit(s): " + Arrays.toString(vm.subreddits));
                     if (!result) {
@@ -405,7 +397,7 @@ public class Main {
 
                     //Make sure all of the files specified in the manifest exist so that we don't have any mysterious problems later.
                     for (VideoManifestComment comment : vm.comments) {
-                        if (!new File(DOWNLOADS_FOLDER + "/" + comment.name).exists()) {
+                        if (!new File(Config.getDownloadsFolder() + "/" + comment.name).exists()) {
                             err("Required file " + comment.name + " does not exist.");
                             if (requestUserYesOrNo("You are missing a required file from the download: \"" +
                                     comment.name + "\"\n\nClick Yes to go to the editor, or" +
@@ -461,14 +453,12 @@ public class Main {
                     gui.progressBar.setIndeterminate(true);
                     gui.title.setText("Generating audio track");
                     gui.progressLabel.setText("1 / 1");
-                    ArrayList<File> audioFiles = randomizeFilesInFolder(LIBRARY_FOLDER + "/audio");
+                    ArrayList<File> audioFiles = randomizeFilesInFolder(Config.getLibraryFolder() + "/audio");
                     ArrayList<File> audioFiles2 = new ArrayList<>();
-                    ArrayList<String> audioFilesStrings = new ArrayList<>();
-                    StringBuilder audioConcatData = new StringBuilder();
                     audioCredits = new StringBuilder("\uD83C\uDFB6 Music credits:\n");
                     double position = 0;
                     for (File f : audioFiles) {
-                        String len = getOutputFromCommand("\"" + LIBRARY_FOLDER + "/bin/ffprobe.exe\" -v error -select_streams a:0 -show_entries stream=duration -of default=noprint_wrappers=1:nokey=1 \"" + f.getAbsolutePath() + "\"");
+                        String len = getOutputFromCommand("\"" + Config.getLibraryFolder() + "/bin/ffprobe.exe\" -v error -select_streams a:0 -show_entries stream=duration -of default=noprint_wrappers=1:nokey=1 \"" + f.getAbsolutePath() + "\"");
                         double songLength = Double.parseDouble(len);
                         audioCredits
                                 .append("\uD83C\uDFB5 ")
@@ -486,136 +476,298 @@ public class Main {
                             .append(" ")
                             .append(OUTRO_SONG)
                             .append("\n");
-                    StringBuilder inputAudioFiles = new StringBuilder();
+
+                    //exec("cmd /c start \"(1/1) Generating Audio Track\" /min /wait \"" + Config.getLibraryFolder() + "/bin/ffmpeg\" " + inputAudioFiles.toString() + " -filter_complex \"" + audioConcatData + "concat=n=" + audioFiles2.size() + ":v=0:a=1[outa]\" -map \"[outa]\" -y rvm_audio_" + DLid + ".mp3");
+
+                    FFmpeg ffmpeg = createFFmpeg();
+
+                    for (File f : audioFiles2) {
+                        ffmpeg.addInput(UrlInput.fromPath(f.toPath()));
+                    }
+                    double finalPosition = position;
+                    Filter audioConcatFilter = Filter.withName("concat")
+                            .addArgument("n", String.valueOf(audioFiles2.size()))
+                            .addArgument("v", "0")
+                            .addArgument("a", "1")
+                            .addOutputLink("outa");
                     for (i = 0; i < audioFiles2.size(); i++) {
-                        audioConcatData.append("[").append(i).append(":a]");
-                        audioFilesStrings.add(audioFiles2.get(i).getAbsolutePath());
+                        audioConcatFilter.addInputLink(i + ":0");
                     }
-                    for (String f : audioFilesStrings) {
-                        inputAudioFiles.append("-hwaccel auto -i \"").append(f).append("\" ");
-                    }
-                    exec("cmd /c start \"(1/1) Generating Audio Track\" /min /wait \"" + LIBRARY_FOLDER + "/bin/ffmpeg\" " + inputAudioFiles.toString() + " -filter_complex \"" + audioConcatData + "concat=n=" + audioFiles2.size() + ":v=0:a=1[outa]\" -map \"[outa]\" -y rvm_audio_" + DLid + ".mp3");
+                    long startTime2 = System.currentTimeMillis();
+                    ffmpeg
+                            .setComplexFilter(FilterGraph.of(
+                                    FilterChain.of(audioConcatFilter)
+                            ))
+                            .setProgressListener(p -> {
+                                gui.progressBar.setMaximum((int) finalPosition);
+                                gui.progressBar.setValue(Math.toIntExact(p.getTimeMillis() / 1000));
+                                gui.progressBar.setIndeterminate(false);
+                                calculateRemainingTime(startTime2, (long) (finalPosition), p.getTimeMillis() / 1000);
+                            })
+                            .addOutput(UrlOutput.toPath(new File(Config.getDownloadsFolder() + "/rvm_audio_" + DLid + ".mp3").toPath()))
+                            .setOverwriteOutput(true)
+                            .setLogLevel(LogLevel.INFO)
+                            .addArguments("-map", "[outa]")
+                            .setOutputListener(s -> {
+                                out("[FFmpeg CLI] > " + s);
+                                return false;
+                            });
+
+                    gui.individualProgressBar.setVisible(false);
+                    gui.progressBar.setIndeterminate(false);
+                    ffmpeg.execute();
 
                     i = 1;
                     gui.title.setText("Rendering temporary videos");
                     gui.progressBar.setMaximum(vm.comments.length);
                     gui.progressBar.setIndeterminate(false);
-                    gui.progressLabel.setText("Starting...");
+                    gui.progressLabel.setText("0%");
+                    gui.individualProgressBar.setVisible(true);
+                    gui.individualProgressBar.setIndeterminate(false);
                     long startTime = System.currentTimeMillis();
                     gui.renderPreview.setVisible(true);
                     for (VideoManifestComment comment : vm.comments) {
+                        long individualStartTime = System.currentTimeMillis();
                         String out = "rvm_temp_" + comment.DLid + "_thing_" + comment.thingId + ".mp4";
-                        File outFile = new File(DOWNLOADS_FOLDER + "/" + out);
+                        File outFile = new File(Config.getDownloadsFolder() + "/" + out);
                         out("Checking if " + outFile.getAbsolutePath() + " exists... " + outFile.exists());
                         outputFiles.add(out);
                         if (!outFile.exists()) {
-                            long cmdStartTime = new Date().getTime();
-                            gui.progressLabel.setText(i + " / " + vm.comments.length);
                             gui.progressBar.setValue(i);
                             //For each comment, join the audio & image together with a blurred video background.
                             String mp3 = "rvm_dl_" + comment.DLid + "_thing_" + comment.thingId + ".mp3";
                             String png = "rvm_dl_" + comment.DLid + "_thing_" + comment.thingId + ".png";
 
+                            double tempVideoLength = Double.parseDouble(getOutputFromCommand("\"" +
+                                    Config.getLibraryFolder() + "/bin/ffprobe.exe\" -v error -show_entries format=duration " +
+                                    "-of default=noprint_wrappers=1:nokey=1 " + mp3));
+
+                            out("Temporary video length found: " + tempVideoLength);
+
                             ImageIcon icon = new ImageIcon(png);
                             gui.renderPreview.setIcon(getScaledImage(icon, (icon.getIconWidth() / icon.getIconHeight()) * 400, 400));
 
                             if (comment.isTitle) {
-                                png = Main.DOWNLOADS_FOLDER + "/rvm_final_" + comment.DLid + "_thumbnail.png";
+                                png = "rvm_final_" + comment.DLid + "_thumbnail.png";
                             }
-                            //String com = "\"" + LIBRARY_FOLDER + "/bin/ffprobe.exe\" -v error -select_streams a:0 -show_entries stream=duration -of default=noprint_wrappers=1:nokey=1 -sexagesimal \"" + DOWNLOADS_FOLDER + "/rvm_dl_" + comment.DLid + "_thing_" + comment.thingId + ".mp3\"";
-                            //String videoLength = getOutputFromCommand(com);
-                            //Cut everything to the length of the audio because `-shortest` is very buggy in this scenario.
-                            /*
-                            String cmd = "cmd /c start \"(" + i + "/" + vm.comments.length + ") Generating Temporary Videos\" " +
-                                    "/min /wait \"" + LIBRARY_FOLDER + "/bin/ffmpeg\""// -t " + videoLength
-                                    + " -hwaccel nvdec -i \"" + background + "\" -hwaccel auto "//-t "+ videoLength
-                                    +"-i \"" + mp3 + "\" -r 1 -hwaccel auto -i \"" + png + "\" -filter_complex \"" +
-                                    "[0:v]boxblur=10:5 [bblur], [2:v]scale=1920:-1 [" + (comment.isTitle ? "ovrl1" : "ovrl") +
-                                    "]," + (comment.isTitle ? "[ovrl1]colorkey=0x292929:0.05:0.1[ovrl]," : "") +
-                                    "[bblur][ovrl]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2\" -acodec copy -map " +
-                                    "1:a -c:a aac -pix_fmt nv12 -c:v h264_nvenc -shortest -r 30 -n " + out;
-                            */
-                            String cmd;
-                            if (comment.isTitle) {
-                                cmd = "cmd /c start \"RVM\" /min /wait \"" + LIBRARY_FOLDER + "/bin/ffmpeg\" -hwaccel nvdec -i \"" + mp3 + "\" " +
-                                        "-hwaccel nvdec -i \"" + background + "\" -r 1 -hwaccel nvdec -i \"" + png + "\" " +
-                                        "-filter_complex \"[2:v]scale=1920:-1[ss1];[ss1]colorkey=0x292929:0.05:0.1[ss];" +
-                                        "[1:v][ss]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2\"" +
-                                        " -c:v h264_nvenc -map 0:a -shortest -y \"" + out + "\"";
+
+                            FilterChain filterChain = FilterChain.of(
+                                    Filter.withName("scale")
+                                            .addInputLink("2:0")
+                                            .addArgument("width", "1920")
+                                            .addArgument("height", "-1")
+                                            .addOutputLink("scaledImage")
+                            );
+                            if (!comment.isTitle) {
+                                filterChain.addFilter(Filter.withName("overlay")
+                                        .addInputLink("1:v")
+                                        .addInputLink("scaledImage")
+                                        .addArgument("x", "(main_w-overlay_w)/2")
+                                        .addArgument("y", "(main_h-overlay_h)/2")
+                                        .addOutputLink("finalVideo")
+                                );
                             } else {
-                                cmd = "cmd /c start \"RVM\" /min /wait \"" + LIBRARY_FOLDER + "/bin/ffmpeg\" -hwaccel nvdec -i \"" + mp3 + "\" " +
-                                        "-hwaccel nvdec -i \"" + background + "\" -r 1 -hwaccel nvdec -i \"" + png + "\" " +
-                                        "-filter_complex \"[2:v]scale=1920:-1[ss];[1:v][ss]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2\"" +
-                                        " -c:v h264_nvenc -map 0:a -shortest -y \"" + out + "\"";
+                                filterChain.addFilter(Filter.withName("colorkey")
+                                        .addInputLink("scaledImage")
+                                        .addArgument("color", "0x292929")
+                                        .addArgument("similarity", "0.05")
+                                        .addArgument("blend", "0.1")
+                                        .addOutputLink("chromaKeyedImage")
+                                );
+                                filterChain.addFilter(Filter.withName("overlay")
+                                        .addInputLink("1:v")
+                                        .addInputLink("chromaKeyedImage")
+                                        .addArgument("x", "(main_w-overlay_w)/2")
+                                        .addArgument("y", "(main_h-overlay_h)/2")
+                                        .addOutputLink("finalVideo")
+                                );
                             }
-                            exec(cmd);
-                            long cmdEndTime = new Date().getTime();
-                            long cmdTime = (cmdEndTime - cmdStartTime);
-                            out("Process took " + cmdTime + "ms.");
-                            if (cmdTime <= 500) {
-                                err("Abnormally short generation (probably an error) detected!");
-                                if (!requestUserYesOrNo("An error was detected while running the command:\n\n" + cmd + "\n\nContinue? (If you select Yes, there may be more problems later)")) {
-                                    exit(1);
-                                }
-                            }
+
+                            FFmpeg ffmpeg1 = createFFmpeg();
+                            ffmpeg1
+                                    .addInput(
+                                            UrlInput.fromPath(new File(Config.getDownloadsFolder() + "/" + mp3).toPath())
+                                                    .addArguments("-hwaccel", "nvdec")
+                                    )
+                                    .addInput(
+                                            UrlInput.fromPath(new File(background).toPath())
+                                                    .addArguments("-hwaccel", "nvdec")
+                                    )
+                                    .addInput(
+                                            UrlInput.fromPath(new File(Config.getDownloadsFolder() + "/" + png).toPath())
+                                                    .setFrameRate(1)
+                                                    .addArguments("-hwaccel", "nvdec")
+                                    )
+                                    .setComplexFilter(FilterGraph.of(
+                                            filterChain
+                                    ))
+                                    .addArguments("-c:v", "h264_nvenc")
+                                    .addArgument("-shortest")
+                                    .addArguments("-map", "[finalVideo]")
+                                    .addArguments("-map", "0:a")
+                                    .addArguments("-c:a", "aac")
+                                    .setOverwriteOutput(true)
+                                    .addOutput(UrlOutput.toPath(outFile.toPath()))
+                                    .setLogLevel(LogLevel.INFO)
+                                    .setProgressListener(p -> {
+                                        gui.individualProgressBar.setVisible(true);
+                                        gui.indProgressLabel.setVisible(true);
+                                        if (p.getTimeMillis() != null) {
+                                            gui.individualProgressBar.setMaximum((int) tempVideoLength);
+                                            gui.individualProgressBar.setValue(Math.toIntExact(p.getTimeMillis() / 1000));
+                                            gui.individualProgressBar.setIndeterminate(false);
+                                            calculateIndRemainingTime(individualStartTime, (long) tempVideoLength, p.getTimeMillis() / 1000);
+                                        } else {
+                                            gui.individualProgressBar.setIndeterminate(true);
+                                        }
+                                    })
+                                    .setOutputListener(s -> {
+                                        out("[FFmpeg CLI] > " + s);
+                                        return false;
+                                    });
+
+                            ffmpeg1.execute();
                         } else {
                             out("File " + out + " already exists! Skipping...");
                             i++;
                             continue;
                         }
                         i++;
-                        out("Calculating remaining time...");
                         if (!(i >= vm.comments.length)) calculateRemainingTime(startTime, vm.comments.length, i);
-                        out("Finished method call.");
                     }
                     gui.renderPreview.setVisible(false);
                     gui.timeRemaining.setText("");
 
+                    gui.indProgressLabel.setVisible(false);
+                    gui.individualProgressBar.setVisible(false);
+
                     gui.title.setText("Combining final video");
                     gui.progressBar.setIndeterminate(true);
-                    gui.progressLabel.setText("Gathering data...");
-                    //CONCAT ALL OF THE TEMP VIDEOS INTO ONE
-                    StringBuilder concatData = new StringBuilder();
+                    gui.progressLabel.setText("0%");
+                    gui.indProgressLabel.setVisible(false);
+                    gui.indTimeRemaining.setVisible(false);
+
+                    gui.progressBar.setIndeterminate(true);
+
+                    String audioFile = "rvm_audio_" + DLid + ".mp3";
+                    //After all if the individual videos are made, concatenate them into one.
+
+                    FFmpeg ffmpeg2 = createFFmpeg();
+                    String outro = randomizeFilesInFolder(Config.getLibraryFolder() + "/outros").get(0).getAbsolutePath();
+
+                    for (String f : outputFiles) {
+                        ffmpeg2.addInput(
+                                UrlInput.fromPath(new File(Config.getDownloadsFolder() + "/" + f).toPath())
+                                //.addArguments("-hwaccel", "nvdec")
+                        );
+                    }
+                    ffmpeg2
+                            .addInput(
+                                    UrlInput.fromPath(new File(Config.getDownloadsFolder() + "/" + audioFile).toPath())
+                                    //.addArguments("-hwaccel", "nvdec")
+                            )
+                            .addInput(
+                                    UrlInput.fromPath(new File(outro).toPath())
+                                    //.addArguments("-hwaccel", "nvdec")
+                            );
+                    Filter concatFilter = Filter.withName("concat");
                     for (i = 0; i < outputFiles.size(); i++) {
                         if (outputFiles.get(i).endsWith(".mp4")) {
                             if (outputFiles.get(i).contains("outros")) {
                                 //Outro sequences have no audio attached to them and may not have an audio stream.
-                                concatData.append("[").append(i).append(":0]");
+                                concatFilter.addInputLink(i + ":0");
                             } else {
                                 //Non-outro .mp4 files have audio AND video streams.
-                                concatData.append("[").append(i).append(":0][").append(i).append(":1]");
+                                concatFilter.addInputLink(i + ":0").addInputLink(i + ":1");
                             }
                         } else if (outputFiles.get(i).endsWith(".mp3")) {
                             //.mp3 files only have audio streams.
-                            concatData.append("[").append(i).append(":0]");
-                        } else {
-                            //There was a format we didn't account for.
-                            err("There was a problem with the final concatenation: Unknown file extension for file " + outputFiles.get(i));
-                            exit(1);
+                            concatFilter.addInputLink(i + ":0");
                         }
                     }
 
-                    gui.progressBar.setIndeterminate(true);
-                    gui.progressBar.setMaximum(3);
-                    gui.progressBar.setValue(1);
-                    gui.progressLabel.setText("1 / 2");
+                    double finalLength = length;
+                    long startTime3 = System.currentTimeMillis();
+                    ffmpeg2
+                            .setComplexFilter(FilterGraph.of(
+                                    FilterChain.of(
+                                            concatFilter
+                                                    .addArgument("n", String.valueOf(outputFiles.size()))
+                                                    .addArgument("v", "1")
+                                                    .addArgument("a", "1")
+                                                    .addOutputLink("outv")
+                                                    .addOutputLink("outa"),
+                                            Filter.withName("aformat")
+                                                    .addInputLink("outa")
+                                                    .addArgument("sample_fmts", "fltp")
+                                                    .addArgument("sample_rates", "22050")
+                                                    .addArgument("channel_layouts", "stereo")
+                                                    .addOutputLink("a1"),
+                                            Filter.withName("aformat")
+                                                    .addInputLink(outputFiles.size() + ":0")
+                                                    .addArgument("sample_fmts", "fltp")
+                                                    .addArgument("sample_rates", "22050")
+                                                    .addArgument("channel_layouts", "stereo")
+                                                    .addOutputLink("a2"),
+                                            Filter.withName("volume")
+                                                    .addInputLink("a2")
+                                                    .addArgument("volume", "-20.0dB")
+                                                    .addOutputLink("a2adj"),
+                                            Filter.withName("volume")
+                                                    .addInputLink("a1")
+                                                    .addArgument("volume", "5.0dB")
+                                                    .addOutputLink("a1adj"),
+                                            Filter.withName("amerge")
+                                                    .addInputLink("a1adj")
+                                                    .addInputLink("a2adj")
+                                                    .addArgument("inputs", "2")
+                                                    .addOutputLink("apresync"),
+                                            Filter.withName("aresample")
+                                                    .addInputLink("apresync")
+                                                    .addArgument("async", "1000")
+                                                    .addOutputLink("afinal"),
+                                            Filter.withName("mpdecimate")
+                                                    .addInputLink("outv")
+                                                    .addOutputLink("vfinal"),
+                                            Filter.withName("concat")
+                                                    .addInputLink("vfinal")
+                                                    .addInputLink("afinal")
+                                                    .addInputLink((outputFiles.size() + 1) + ":0")
+                                                    .addInputLink((outputFiles.size() + 1) + ":1")
+                                                    .addArgument("n", "2")
+                                                    .addArgument("a", "1")
+                                                    .addArgument("v", "1")
+                                                    .addOutputLink("v")
+                                                    .addOutputLink("a"),
+                                            Filter.withName("mpdecimate")
+                                                    .addInputLink("v")
+                                                    .addOutputLink("v2")
+                                    )
+                            ))
+                            .addOutput(UrlOutput.toPath(new File(Config.getDownloadsFolder() + "/rvm_final_" + DLid + ".mp4").toPath()))
+                            .addArguments("-map", "[v2]")
+                            .addArguments("-map", "[a]")
+                            .addArguments("-r", "30")
+                            .addArguments("-c:v", "h264_nvenc")
+                            .addArguments("-c:a", "aac")
+                            .setOverwriteOutput(true)
+                            .setLogLevel(LogLevel.INFO)
+                            .setProgressListener(p -> {
+                                if (p.getTimeMillis() != null) {
+                                    gui.progressBar.setIndeterminate(false);
+                                    gui.progressBar.setMaximum((int) finalLength + 20);
+                                    gui.progressBar.setValue(Math.toIntExact(p.getTimeMillis() / 1000));
+                                    calculateRemainingTime(startTime3, (long) (finalLength + 20), p.getTimeMillis() / 1000);
+                                } else {
+                                    gui.progressBar.setIndeterminate(true);
+                                }
+                            }).setOutputListener(o -> {
+                        out("[FFmpeg CLI] > " + o);
+                        return false;
+                    })
+                            .execute();
 
-                    String audioFile = "rvm_audio_" + DLid + ".mp3";
-                    //After all if the individual videos are made, concatenate them into one.
-                    exec("cmd /c start \"(1/2) Combining Final Video\" /min /wait \"" + LIBRARY_FOLDER + "/bin/ffmpeg\" -i " + String.join(" -i ", outputFiles) + " -hwaccel nvdec -i " + audioFile + " -filter_complex \"" + concatData + "concat=n=" + outputFiles.size() + ":v=1:a=1[outv][outa];[outa]aformat=sample_fmts=fltp:sample_rates=22050:channel_layouts=stereo[a1];[" + outputFiles.size() + ":0]aformat=sample_fmts=fltp:sample_rates=22050:channel_layouts=stereo[a2];[a2]volume=-20.0dB[a2adj];[a1]volume=5.0dB[a1adj];[a1adj][a2adj]amerge=inputs=2[apresync];[apresync]aresample=async=1000[afinal];[outv]mpdecimate[vfinal]\" -map \"[vfinal]\" -map \"[afinal]\" -vsync 2 -c:v h264_nvenc -shortest -n -r 30 rvm_final_" + DLid + "_preoutro.mp4");
-                    gui.progressBar.setValue(2);
-                    gui.progressLabel.setText("2 / 2");
-                    //String com = "\"" + LIBRARY_FOLDER + "/bin/ffprobe.exe\" -v error -select_streams v:0 -show_entries stream=duration -of default=noprint_wrappers=1:nokey=1 -sexagesimal rvm_final_" + DLid + "_precut.mp4";
-
-                    String finalPath = DOWNLOADS_FOLDER + "/rvm_final_" + DLid + ".mp4";
-
-                    //Cut the video to the length of the longest video stream (workaround for an ffmpeg but where `-shortest` doesn't work on audio)
-                    //exec("cmd /c start \"(2/2) Combining Final Video\" /min /wait \"" + LIBRARY_FOLDER + "/bin/ffmpeg\" -hwaccel auto -i rvm_final_" + DLid + "_precut.mp4 -to " + getOutputFromCommand(com) + " -c copy -c:v h264_nvenc -n rvm_final_" + DLid + "_preoutro.mp4");
-                    String outro = randomizeFilesInFolder(LIBRARY_FOLDER + "/outros").get(0).getAbsolutePath();
-                    gui.progressLabel.setText("2 / 2");
-                    gui.progressBar.setValue(3);
-                    //Add the outro to the fixed video.
-                    exec("cmd /c start \"(2/2) Combining Final Video\" /min /wait \"" + LIBRARY_FOLDER + "/bin/ffmpeg\" -hwaccel nvdec -i rvm_final_" + DLid + "_preoutro.mp4 -hwaccel nvdec -i " + outro + " -filter_complex \"[0:0][0:1][1:0][1:1]concat=n=2:v=1:a=1[preVideo][preAudio];[preAudio]loudnorm[audio1];[audio1]volume=10.0dB[audio2]\" -map \"[preVideo]\" -map \"[audio2]\" -n -c:v h264_nvenc \"" + finalPath + "\"");
+                    String finalPath = Config.getDownloadsFolder() + "/rvm_final_" + DLid + ".mp4";
 
                     //Upload the video to YouTube
                     gui.progressBar.setIndeterminate(true);
@@ -687,9 +839,11 @@ public class Main {
                     gui.progressBar.setIndeterminate(false);
                     gui.progressBar.setMaximum(100);
                     gui.progressBar.setValue(0);
+                    gui.indProgressLabel.setVisible(false);
+                    gui.indTimeRemaining.setVisible(false);
                     UploadVideo.main(finalPath, videoTitle, description.toString(), tags);
                     //The rest of the program is finished in `onVideoIdGathered()`
-                } catch (IOException | InterruptedException | NullPointerException | GeneralSecurityException | IllegalAccessException | NoSuchFieldException e) {
+                } catch (Exception e) {
                     StringWriter sw = new StringWriter();
                     PrintWriter pw = new PrintWriter(sw);
                     e.printStackTrace(pw);
@@ -706,6 +860,10 @@ public class Main {
         };
 
         worker.execute();
+    }
+
+    private static FFmpeg createFFmpeg() {
+        return FFmpeg.atPath(new File(Config.getLibraryFolder() + "/bin").toPath());
     }
 
     static void onVideoIdGathered(String videoId) throws GeneralSecurityException, IOException {
@@ -737,28 +895,31 @@ public class Main {
         if (requestUserYesOrNo("Move files to archive folder? (Recommended)")) {
             //Move all of the temp files to a folder for archival purposes.
             gui.title.setText("Cleaning up");
-            gui.progressLabel.setText("Starting...");
             gui.progressBar.setIndeterminate(false);
             gui.progressBar.setMaximum(vm.comments.length);
             int i = 0;
+            long startTime = System.currentTimeMillis();
             for (VideoManifestComment vmc : vm.comments) {
                 i++;
                 gui.progressBar.setValue(i);
-                gui.progressLabel.setText(i + " / " + vm.comments.length);
-                moveFile(DOWNLOADS_FOLDER + "/" + vmc.name, OUTPUT_FOLDER + "/Archive/" + vmc.DLid + "/" + vmc.name);
-                moveFile(DOWNLOADS_FOLDER + "/rvm_temp_" + vmc.DLid + "_thing_" + vmc.thingId + ".mp4", OUTPUT_FOLDER + "/Archive/" + vmc.DLid + "/rvm_temp_" + vmc.DLid + "_thing_" + vmc.thingId + ".mp4");
-                moveFile(DOWNLOADS_FOLDER + "/rvm_dl_" + vmc.DLid + "_thing_" + vmc.thingId + ".mp3", OUTPUT_FOLDER + "/Archive/" + vmc.DLid + "/rvm_dl_" + vmc.DLid + "_thing_" + vmc.thingId + ".mp3");
+                moveFile(Config.getDownloadsFolder() + "/" + vmc.name, Config.getOutputFolder() + "/Archive/" + vmc.DLid + "/" + vmc.name);
+                moveFile(Config.getDownloadsFolder() + "/rvm_temp_" + vmc.DLid + "_thing_" + vmc.thingId + ".mp4", Config.getOutputFolder() + "/Archive/" + vmc.DLid + "/rvm_temp_" + vmc.DLid + "_thing_" + vmc.thingId + ".mp4");
+                moveFile(Config.getDownloadsFolder() + "/rvm_dl_" + vmc.DLid + "_thing_" + vmc.thingId + ".mp3", Config.getOutputFolder() + "/Archive/" + vmc.DLid + "/rvm_dl_" + vmc.DLid + "_thing_" + vmc.thingId + ".mp3");
                 if (vmc.isTitle) {
-                    moveFile(DOWNLOADS_FOLDER + "/rvm_final_" + DLid + "_thumbnail.png", OUTPUT_FOLDER + "/Archive/" + DLid + "/rvm_final_" + vmc.DLid + "_thumbnail.png");
+                    moveFile(Config.getDownloadsFolder() + "/rvm_final_" + DLid + "_thumbnail.png", Config.getOutputFolder() + "/Archive/" + DLid + "/rvm_final_" + vmc.DLid + "_thumbnail.png");
                 }
+                calculateRemainingTime(startTime, vm.comments.length, i);
             }
             gui.progressBar.setIndeterminate(true);
             //Move manifest, final pre-cut video, and final post-cut video
-            moveFile(DOWNLOADS_FOLDER + "/rvm_manifest_" + DLid + ".json", OUTPUT_FOLDER + "/Archive/" + DLid + "/rvm_manifest_" + DLid + ".json");
-            moveFile(DOWNLOADS_FOLDER + "/rvm_final_" + DLid + "_precut.mp4", OUTPUT_FOLDER + "/Archive/" + DLid + "/rvm_final_" + DLid + "_precut.mp4");
-            moveFile(DOWNLOADS_FOLDER + "/rvm_final_" + DLid + "_preoutro.mp4", OUTPUT_FOLDER + "/Archive/" + DLid + "/rvm_final_" + DLid + "_preoutro.mp4");
-            moveFile(DOWNLOADS_FOLDER + "/rvm_audio_" + DLid + ".mp3", OUTPUT_FOLDER + "/Archive/" + DLid + "/rvm_audio_" + DLid + ".mp3");
-            moveFile(DOWNLOADS_FOLDER + "/rvm_final_" + DLid + ".mp4", OUTPUT_FOLDER + "/Final/" + DLid + ".mp4");
+            moveFile(Config.getDownloadsFolder() + "/rvm_manifest_" + DLid + ".json", Config.getOutputFolder() + "/Archive/" + DLid + "/rvm_manifest_" + DLid + ".json");
+            moveFile(Config.getDownloadsFolder() + "/rvm_final_" + DLid + "_precut.mp4", Config.getOutputFolder() + "/Archive/" + DLid + "/rvm_final_" + DLid + "_precut.mp4");
+            moveFile(Config.getDownloadsFolder() + "/rvm_final_" + DLid + "_preoutro.mp4", Config.getOutputFolder() + "/Archive/" + DLid + "/rvm_final_" + DLid + "_preoutro.mp4");
+            moveFile(Config.getDownloadsFolder() + "/rvm_audio_" + DLid + ".mp3", Config.getOutputFolder() + "/Archive/" + DLid + "/rvm_audio_" + DLid + ".mp3");
+            moveFile(Config.getDownloadsFolder() + "/rvm_final_" + DLid + ".mp4", Config.getOutputFolder() + "/Final/" + DLid + ".mp4");
+            gui.progressBar.setIndeterminate(false);
+            gui.progressBar.setValue(1);
+            gui.progressBar.setMaximum(1);
         } else {
             out("Moving files skipped. Everything is still in the Downloads folder, which may screw up this program in the future.");
         }
@@ -766,7 +927,13 @@ public class Main {
         gui.progressBar.setIndeterminate(false);
         gui.progressBar.setMaximum(1);
         gui.progressBar.setValue(1);
+        gui.individualProgressBar.setValue(1);
+        gui.individualProgressBar.setMaximum(1);
+        gui.individualProgressBar.setVisible(false);
         gui.progressLabel.setText("");
+        gui.indProgressLabel.setText("");
+        gui.indTimeRemaining.setText("");
+        gui.timeRemaining.setText("");
         gui.title.setText("Done");
 
         // yay~yay~yay
@@ -787,6 +954,7 @@ public class Main {
         return minutes + "m " + tempSeconds + "s";
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static Icon getScaledImage(ImageIcon icon, int w, int h) {
         BufferedImage resizedImg = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g2 = resizedImg.createGraphics();
@@ -804,8 +972,8 @@ public class Main {
      *
      * @param seconds The amount of seconds remaining.
      */
-    private static void setRemainingTimeText(int seconds) {
-        SwingUtilities.invokeLater(() -> gui.timeRemaining.setText(convertToTimeString(seconds)));
+    private static void setRemainingTimeText(int seconds, JLabel tv) {
+        SwingUtilities.invokeLater(() -> tv.setText(convertToTimeString(seconds)));
     }
 
     /**
@@ -842,6 +1010,7 @@ public class Main {
      */
     static void exit(int code) {
         File logFile = new File(System.getenv("LOCALAPPDATA") + "/rvm_logs/log_" + System.currentTimeMillis() + ".txt");
+        //noinspection ResultOfMethodCallIgnored
         logFile.getParentFile().mkdirs();
         out("Saving log to " + logFile.getAbsolutePath());
         try {
@@ -852,6 +1021,26 @@ public class Main {
             err("Error saving log file: " + e.getMessage());
         }
         System.exit(code);
+    }
+
+    /*
+    By default, set the overall progress bar.
+     */
+    static void calculateRemainingTime(long startTime, long length, long currentIndex) {
+        calculateRemainingTime(startTime, length, currentIndex, gui.timeRemaining);
+        gui.progressLabel.setText((int) ((float) currentIndex / (float) length * 100) + "%");
+        //out("Set current progress to " + ((float) currentIndex / (float) length * 100) + "% (" +
+        //        (float) currentIndex + " / " + (float) length + ")");
+    }
+
+    /*
+    By default, set the overall progress bar.
+     */
+    private static void calculateIndRemainingTime(long startTime, long length, long currentIndex) {
+        calculateRemainingTime(startTime, length, currentIndex, gui.indTimeRemaining);
+        gui.indProgressLabel.setText((int) ((float) currentIndex / (float) length * 100) + "%");
+        //out("Set current (individual) progress to " + ((float) currentIndex / (float) length * 100) +
+        //        "% (" + (float) currentIndex + " / " + (float) length + ")");
     }
 
     /**
@@ -866,13 +1055,13 @@ public class Main {
      * @throws IllegalArgumentException  If the current time < `startTime`.
      * @throws IndexOutOfBoundsException If `currentIndex` > `length`
      */
-    static void calculateRemainingTime(long startTime, long length, long currentIndex)
+    private static void calculateRemainingTime(long startTime, long length, long currentIndex, JLabel tv)
             throws IllegalArgumentException, IndexOutOfBoundsException {
         //Calculate the remaining time
         long elapsedTime = System.currentTimeMillis() - startTime;
 
-        if (currentIndex > length) throw new IndexOutOfBoundsException("currentIndex > length.");
-        if (elapsedTime < 0) throw new IllegalArgumentException("startTime occurs after the current time.");
+        //if (currentIndex > length) throw new IndexOutOfBoundsException("currentIndex > length.");
+        //if (elapsedTime < 0) throw new IllegalArgumentException("startTime occurs after the current time.");
 
         if (currentIndex == 0) currentIndex = 1;
 
@@ -880,7 +1069,7 @@ public class Main {
         long remainingTime = totalTime - elapsedTime;
         if (remainingTime < 1000 && remainingTime > 100) remainingTime = 1000;
         final int[] seconds = {(int) (remainingTime / 1000)};
-        setRemainingTimeText(seconds[0]);
+        setRemainingTimeText(seconds[0], tv);
         if (timer != null) {
             timer.cancel();
         }
@@ -891,13 +1080,13 @@ public class Main {
             public void run() {
                 try {
                     seconds[0] -= 1;
-                    setRemainingTimeText(seconds[0]);
+                    setRemainingTimeText(seconds[0], tv);
                 } catch (ArithmeticException e) {
                     //Attempted to divide by 0. Just continue so it returns "Estimating..." instead of an error.
                 }
             }
         }, 0, 1000);
-        SwingUtilities.invokeLater(() -> gui.timeRemaining.setText("Estimating..."));
+        //SwingUtilities.invokeLater(() -> gui.timeRemaining.setText("Estimating..."));
     }
 
     static String getDLid() {

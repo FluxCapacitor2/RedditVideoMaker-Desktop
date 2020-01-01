@@ -93,19 +93,30 @@ public class EditManifest {
             gbc.gridx = 0;
             panel.add(new JLabel("#" + i), gbc);
             gbc.gridx = 1;
-            panel.add(new JLabel((c.isTitle ? "Video Title" : "")), gbc);
+            panel.add(new JLabel("<html>" + (c.isTitle ? "<strong>" : "") + String.join("<br />",
+                    LineBreak.wrap(c.text, fm, (int) (frame.getBounds().getWidth() / 2))) +
+                    (c.isTitle ? "</strong>" : "") + "</html>"), gbc);
             gbc.gridx = 2;
-            panel.add(new JLabel("<html>" + String.join("<br />", LineBreak.wrap(c.text, fm, (int) (frame.getBounds().getWidth() / 2))) + "</html>"), gbc);
-            gbc.gridx = 3;
             panel.add(new JLabel(c.DLid), gbc);
+            gbc.gridx = 3;
+            JButton openBtn = new JButton("Open");
+            openBtn.addActionListener((event) -> {
+                try {
+                    Main.exec("explorer.exe /select," + Config.getDownloadsFolder().replaceAll("/", "\\\\") + "\\" + c.name);
+                } catch (IOException | InterruptedException e) {
+                    e.printStackTrace();
+                }
+            });
+            panel.add(openBtn, gbc);
+            //panel.add(new JLabel(c.name), gbc);
             gbc.gridx = 4;
-            panel.add(new JLabel(c.name), gbc);
-            gbc.gridx = 5;
             JButton editBtn = new JButton("Edit");
             int finalI = i;
-            editBtn.addActionListener(e -> updateManifest(finalI, JOptionPane.showInputDialog(null, "Edit comment:\n\"" + c.text + "\"", c.text)));
+            editBtn.addActionListener(e -> updateManifest(finalI,
+                    JOptionPane.showInputDialog(null, "Edit comment:\n\"" +
+                            c.text + "\"", c.text)));
             panel.add(editBtn, gbc);
-            gbc.gridx = 6;
+            gbc.gridx = 5;
             JButton removeBtn = new JButton("Remove");
             removeBtn.addActionListener(e -> removeFromManifest(finalI));
             panel.add(removeBtn, gbc);

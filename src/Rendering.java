@@ -17,6 +17,9 @@ public class Rendering {
     JScrollPane scrollPane;
     JLabel renderPreview;
     private JPanel renderPreviewParent;
+    JProgressBar individualProgressBar;
+    JLabel indProgressLabel;
+    JLabel indTimeRemaining;
     JLabel imageView;
 
     Options options;
@@ -37,5 +40,8 @@ public class Rendering {
 
         DefaultCaret caret = (DefaultCaret) logArea.getCaret();
         caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
+
+        individualProgressBar.setVisible(false);
+        indProgressLabel.setVisible(false);
     }
 }

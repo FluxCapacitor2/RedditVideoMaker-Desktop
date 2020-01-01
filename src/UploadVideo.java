@@ -32,7 +32,7 @@ class UploadVideo {
         new UploadScheduler();
     }
 
-    public static void onDateTimeGathered(DateTime dt) throws IOException, GeneralSecurityException {
+    static void onDateTimeGathered(DateTime dt) throws IOException, GeneralSecurityException {
         Main.out("Uploading video:\npath=" + filePath + "\ntitle=" + videoTitle + "\ndescription=" + videoDescription +
                 "\ntags=" + videoTags);
         YouTube youtubeService = ApiUtils.getService();
@@ -99,6 +99,8 @@ class UploadVideo {
                 Main.gui.progressLabel.setText(Math.round(progress.getProgress() * 100) + "%");
                 Main.calculateRemainingTime(startTime, 100, (long) (progress.getProgress() * 100));
                 Main.gui.progressBar.setValue((int) (progress.getProgress() * 100));
+                Main.gui.progressBar.setMaximum(100);
+                Main.gui.progressLabel.setText(Math.round(progress.getProgress() * 100) + "%");
             } catch (IOException e) {
                 e.printStackTrace();
             }

@@ -26,7 +26,14 @@ public class ThumbnailGenerator {
         int highlightHorizontalMargin = 20;
         int highlightVerticalMargin = -20;
 
-        String thumbnailPath;
+        String thumbnailPath = Config.getDownloadsFolder() + "/rvm_final_" + DLid + "_thumbnail.png";
+        File outputFile = new File(thumbnailPath);
+
+        if (outputFile.exists()) {
+            //If the image already exists, skip the entire process and just use the exiting one.
+            return thumbnailPath;
+        }
+
         videoTitle = JOptionPane.showInputDialog(null,
                 "Text to be shown in thumbnail:\n\n(Originally \"" + videoTitle + "\")", videoTitle);
 
@@ -119,8 +126,6 @@ public class ThumbnailGenerator {
             //Add the exquisite reddit "ER" logo in the bottom right
             graphics.drawImage(ImageIO.read(new File(Config.getLibraryFolder() + "/er_logo.png")), 1650, 40, 200, 200, null);
             //Save the image
-            thumbnailPath = Config.getDownloadsFolder() + "/rvm_final_" + DLid + "_thumbnail.png";
-            File outputFile = new File(thumbnailPath);
             ImageIO.write(bi, "png", outputFile);
             //Desktop.getDesktop().open(outputFile);
             //Instead of just opening it in Photos, display it in the window itself:
