@@ -1,0 +1,70 @@
+/*
+Dark Mode CSS
+ */
+/* Overall */
+.nightmode, .nightmode * {
+    color: #ccc !important;
+    background-color: #262626 !important;
+}
+
+.nightmode p.tagline a.author, .nightmode p.tagline a.expand {
+    color: rgb(106, 152, 175) !important;
+}
+
+section.listingsignupbar.infobar {
+    display: none !important;
+}
+
+#header-bottom-left {
+    background-color: rgb(204, 204, 204) !important;
+}
+
+#header-img, #header-img-a, #mouseposition-extension-element-full-container, ul.tabmenu, .comment > .entry {
+    background-color: transparent !important;
+}
+
+.sitetable.listing, .usertext-body, .usertext, .noncollapsed.morechildren, p.tagline, p.tagline *, div.entry, .comment > .midcol {
+    background-color: transparent !important;
+}
+
+.flat-list.buttons, .flat-list.buttons *, .md, .md *, .morechildren > .entry, .morechildren > .entry * {
+    background-color: transparent !important;
+}
+
+.sitetable.nestedlisting, .comment .midcol, .comment .midcol *, .comment, .comment .child {
+    background-color: transparent !important;
+}
+
+/* Comment Threads (inspired by Reddit Enhancement Suite) */
+/* Odd numbers */
+.nightmode .comment, .nightmode .comment .comment .comment {
+    background-color: rgb(22, 22, 22) !important;
+}
+
+/* Even numbers */
+.nightmode .comment .comment, .nightmode .comment .comment .comment .comment {
+    background-color: rgb(18, 18, 18) !important;
+}
+
+/* Rounded comments */
+.comment {
+    border-radius: 3px;
+}
+
+.nightmode .comment {
+    border-color: rgb(51, 51, 51) !important;
+    margin: 0 8px 8px 10px !important;
+    border-width: 1px !important;
+    border-style: solid !important;
+    padding: 5px 8px 5px 5px !important;
+}
+
+/* Remove an ugly border */
+.comment .child, .comment .showreplies {
+    border-left: none !important;
+}
+
+/* Loading more comments isn't supported by the server, so why show it to the client? */
+.morecomments {
+    display: none !important;
+}
