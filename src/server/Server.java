@@ -104,17 +104,17 @@ public class Server {
                     new SubredditHandler().handle(httpExchange);
                 } else if (url.contains("/res_nightmode.css")) {
                     //System.out.println("[GeneralHandler] delegating handling to FileHandler (res_nightmode.css)");
-                    new FileHandler(Server.class.getResource("res_nightmode.css"), "text/css").handle(httpExchange);
+                    new FileHandler("res_nightmode.css", "text/css").handle(httpExchange);
                 } else if (url.contains("/rvm_js.js")) {
                     //System.out.println("[GeneralHandler] delegating handling to FileHandler (rvm_js.js)");
-                    new FileHandler(Server.class.getResource("rvm_js.js"), "application/javascript").handle(httpExchange);
+                    new FileHandler("rvm_js.js", "application/javascript").handle(httpExchange);
                 } else if (url.contains("/dom_to_image.js")) {
                     //System.out.println("[GeneralHandler] delegating handling to FileHandler (dom_to_image.js)");
-                    new FileHandler(Server.class.getResource("dom_to_image.js"), "application/javascript").handle(httpExchange);
+                    new FileHandler("dom_to_image.js", "application/javascript").handle(httpExchange);
                 } else if (new File(System.getProperty("user.home") + "/IdeaProjects/RedditVideoMaker-Desktop/src/server/webroot", url).exists()) {
                     File f = new File(System.getProperty("user.home") + "/IdeaProjects/RedditVideoMaker-Desktop/src/server/webroot", url);
                     //System.out.println("[GeneralHandler] delegating request for " + url + " to FileHandler");
-                    new FileHandler(f.toURI().toURL(), getContentTypeFromExtension(f.getName().split("\\.")[f.getName().split("\\.").length - 1])).handle(httpExchange);
+                    new FileHandler(f.toURI().toURL().toString(), getContentTypeFromExtension(f.getName().split("\\.")[f.getName().split("\\.").length - 1])).handle(httpExchange);
                 } else if (url.contains("/status")) {
                     new CaptureStatusHandler().handle(httpExchange);
                 } else if (url.contains("/renderstatus.json")) {
@@ -237,7 +237,7 @@ public class Server {
                     //Go to Reddit & create "add" buttons, etc.
                     String response = RedditParser.main(t.getRequestURI().toString(), (query != null && query.containsKey("hideButtons")));
                     Headers headers = t.getResponseHeaders();
-                    headers.add("Content-Type", "text/html");
+                    headers.add("Content-Type", "text/html; charset=ISO-8859-1");
                     t.sendResponseHeaders(200, response.getBytes().length);
                     printRequestInfo(t);
                     OutputStream os = t.getResponseBody();
@@ -268,10 +268,10 @@ public class Server {
     }
 
     private static class FileHandler implements HttpHandler {
-        private URL resource;
+        private String resource;
         private String contentType;
 
-        FileHandler(URL resource, String contentType) {
+        FileHandler(String resource, String contentType) {
             this.resource = resource;
             this.contentType = contentType;
         }
@@ -280,7 +280,7 @@ public class Server {
         public void handle(HttpExchange t) throws IOException {
             //System.out.println("[FileHandler] Initializing (resource=" + resource.toString() + ",contentType=" + contentType + ")");
             String response;
-            BufferedReader bf = new BufferedReader(new FileReader(new File(resource.getPath())));
+            BufferedReader bf = new BufferedReader(new InputStreamReader(Server.class.getResourceAsStream(resource)));
             String line;
             StringBuilder responseBuilder = new StringBuilder();
             while ((line = bf.readLine()) != null) {
