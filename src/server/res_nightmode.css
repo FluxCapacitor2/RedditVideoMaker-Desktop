@@ -1,12 +1,34 @@
 /*
 Dark Mode CSS
  */
-/* Quick fix: Make <button>'s larger for easier clicking on mobile. */
+/* Quick fix: Make everything larger for easier clicking on mobile. */
 button {
     border-radius: 3px;
-    padding: 12px;
-    margin: 4px;
-    font-size: 24pt;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+@media only screen and (max-width: 800px) {
+    .md p, button {
+        font-size: 24pt !important;
+    }
+
+    input#tText {
+        width: 100% !important;
+        border: 1px solid rgba(255, 255, 255, 0.5);
+    }
+
+    p.tagline {
+        font-size: 15px !important;
+    }
+
+    button {
+        padding: 12px;
+        margin: 4px;
+    }
+}
+
+.commentssignupbar, #header-bottom-right {
+    display: none !important;
 }
 /* Overall */
 .nightmode, .nightmode * {
@@ -20,10 +42,6 @@ button {
 
 section.listingsignupbar.infobar {
     display: none !important;
-}
-
-#header-bottom-left {
-    background-color: rgb(204, 204, 204) !important;
 }
 
 #header-img, #header-img-a, #mouseposition-extension-element-full-container, ul.tabmenu, .comment > .entry {

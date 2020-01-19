@@ -7,6 +7,7 @@ import org.jsoup.select.Elements;
 
 import java.io.IOException;
 import java.net.Inet4Address;
+import java.net.URLEncoder;
 import java.net.UnknownHostException;
 
 public class RedditParser {
@@ -31,6 +32,7 @@ public class RedditParser {
         doc.select("title").get(0).text("RVM | " + doc.select("title").text());
         doc.select("body").addClass("nightmode");
         doc.select("p.parent").remove();
+        doc.select("div#sr-header-area").remove();
         //doc.selectFirst("link[title=applied_subreddit_stylesheet]").remove();
 
         if (url.contains("/comments/")) {
@@ -38,19 +40,25 @@ public class RedditParser {
                 doc.select(".usertext-body .md").attr("contenteditable", "true");
                 doc.selectFirst(".top-matter").attr("contenteditable", true);
             }
-            doc.select("body")
+            doc.select("#header")
                     //Post info (meant for posts only)
-                    .prepend("<button id='sendBtn'>Send</button>\n" +
+                    .append(
                             "<form id='postOptions'>\n" +
-                            "    <input type='radio' name='postType' value='none'>None\n" +
-                            "    <input type='radio' name='postType' value='first'>First\n" +
-                            "    <input type='radio' name='postType' value='last'>Last<br>\n" +
-                            "    <input type='radio' name='postType' value='firstandlast'>First & Last<br>\n" +
-                            "    <input type='text' name='thumbnailText' placeholder='Thumbnail text. Highlight text using < and >.' style='width:300px;' value='" + postTitle + "'><br>\n" +
-                            "    <input type='checkbox' name='isFeatured' id='isFeatured'><label for='isFeatured'>Feature this post in the YouTube video title.</label><br>\n" +
-                            "</form>");
+                                    "    <p>Post Type:</p>\n" +
+                                    "    <input type='radio' name='postType' value='none' id='pt1'><label for='pt1'>None</label>\n" +
+                                    "    <input type='radio' name='postType' value='first' id='pt2'><label for='pt2'>First</label>\n" +
+                                    "    <input type='radio' name='postType' value='last' id='pt3'><label for='pt3'>Last</label>\n" +
+                                    "    <input type='radio' name='postType' value='firstandlast' id='pt4'><label for='pt4'>First & Last</label>\n" +
+                                    "    <input type='text' name='thumbnailText' placeholder='Highlight text " +
+                                    "using < and >.'\n" +
+                                    "                                        style='width:300px;' value='Loading...' id='tText'>\n" +
+                                    "    <input type='checkbox' name='isFeatured' id='isFeatured'><label for='isFeatured'>Feature this\n" +
+                                    "    post in the YouTube video title.</label>\n" +
+                                    "</form>\n" +
+                                    "<button id='sendBtn'>Send</button>");
         }
-        doc.select("body")
+        doc.append("<script type='text/javascript'>document.getElementById('tText').value = decodeURIComponent(\"" + URLEncoder.encode(postTitle, "UTF-8") + "\").replace(/\\+/g, ' ');</script>");
+        doc.select("#header")
                 //Subreddit quick links
                 .prepend("<button><a href='/r/ProRevenge'>r/ProRevenge</a></button>\n" +
                         "<button><a href='/r/PettyRevenge'>r/PettyRevenge</a></button>\n" +
@@ -60,7 +68,7 @@ public class RedditParser {
                         "<button><a href='/r/tifu'>r/tifu</a></button>\n" +
                         "<button><a href='/r/AmITheAsshole'>r/AITA</a></button>\n" +
                         "<button><a href='/r/TalesFromTechSupport'>r/TalesFromTechSupport</a></button>\n" +
-                        "<button><a href='/r/TalesFromRetail'>r/TalesFromRetail</a></button><br><br>");
+                        "<button><a href='/r/TalesFromRetail'>r/TalesFromRetail</a></button>");
 
         System.out.println("Finished removing the sidebar, subreddit stylesheet, and adding the send button.");
 
