@@ -52,7 +52,7 @@ public class EditManifest {
             JOptionPane.showMessageDialog(frame, "Saved!", "Success", JOptionPane.INFORMATION_MESSAGE);
             //Continue with the program by re-opening the options menu.
             frame.setVisible(false);
-            Main.openOptionsMenu();
+            //Main.openOptionsMenu();
             frame.dispose();
         } catch (IOException e) {
             e.printStackTrace();

@@ -64,8 +64,11 @@ class UploadVideo {
             for (String word : arr) {
                 for (String tw : titleWords) {
                     if (word.equalsIgnoreCase(tw)) {
-                        JOptionPane.showMessageDialog(null, "Demonetized word found in video title: \"" + word + "\"",
-                                "Demonetized Word Found", JOptionPane.WARNING_MESSAGE);
+                        //JOptionPane.showMessageDialog(null, "Demonetized word found in video title: \"" + word + "\"",
+                        //        "Demonetized Word Found", JOptionPane.WARNING_MESSAGE);
+
+                        Main.out("**********************************************\n\nDEMONETIZED WORD FOUND: \"" +
+                                word + "\"\n\n**********************************************");
                     }
                 }
             }
@@ -98,11 +101,9 @@ class UploadVideo {
         MediaHttpUploaderProgressListener listener = progress -> SwingUtilities.invokeLater(() -> {
             try {
                 Main.out("Video upload progress changed to " + (progress.getProgress() * 100) + "%");
-                Main.gui.progressLabel.setText(Math.round(progress.getProgress() * 100) + "%");
-                Main.calculateRemainingTime(startTime, 100, (long) (progress.getProgress() * 100));
-                Main.gui.progressBar.setValue((int) (progress.getProgress() * 100));
-                Main.gui.progressBar.setMaximum(100);
-                Main.gui.progressLabel.setText(Math.round(progress.getProgress() * 100) + "%");
+                Main.setProgressValue((long) progress.getProgress() * 1000);
+                Main.setMaxProgressValue(1000);
+                Main.calculateRemainingTime(startTime, 1000, (long) progress.getProgress() * 1000);
             } catch (IOException e) {
                 e.printStackTrace();
             }

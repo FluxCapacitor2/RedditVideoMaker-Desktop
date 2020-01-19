@@ -45,10 +45,17 @@ window.onload = function () {
         selection.forEach(function (e) {
             stringifiedSelection += e + ",";
         });
+        var editAttrs = '';
+        editAttrs += '&edit_title=' + encodeURIComponent(document.querySelector('a.title').innerHTML);
+
+        for (var el of selection) {
+            console.log("Edited ", el, " = ", document.querySelector('#thing_' + el + '>.entry .md').innerHTML);
+            editAttrs += '&edit_' + el + '=' + encodeURIComponent(document.querySelector('#thing_' + el + '>.entry .md').innerHTML);
+        }
         stringifiedSelection = stringifiedSelection.substring(0, stringifiedSelection.length - 1);
         //Combine it unto a query string & navigate to it.
         window.location.href = '?selection=' + encodeURIComponent(stringifiedSelection) +
                 '&capture=true&postType=' + postType + '&isFeatured=' + isFeatured + '&thumbnailText=' +
-                encodeURIComponent(thumbnailText);
+                encodeURIComponent(thumbnailText) + editAttrs;
     });
 };

@@ -1,6 +1,13 @@
 /*
 Dark Mode CSS
  */
+/* Quick fix: Make <button>'s larger for easier clicking on mobile. */
+button {
+    border-radius: 3px;
+    padding: 12px;
+    margin: 4px;
+    font-size: 24pt;
+}
 /* Overall */
 .nightmode, .nightmode * {
     color: #ccc !important;

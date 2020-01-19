@@ -1,7 +1,6 @@
 package main;
 
 import javax.imageio.ImageIO;
-import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -131,14 +130,15 @@ public class ThumbnailGenerator {
             ImageIO.write(bi, "png", outputFile);
             //Desktop.getDesktop().open(outputFile);
             //Instead of just opening it in Photos, display it in the window itself:
-            Main.gui.imageView.setIcon(new ImageIcon(new ImageIcon(ImageIO.read(outputFile)).getImage().getScaledInstance(WIDTH / 2, HEIGHT / 2, Image.SCALE_SMOOTH)));
-            Main.gui.scrollPane.setViewportView(Main.gui.imageView);
+            //Main.gui.imageView.setIcon(new ImageIcon(new ImageIcon(ImageIO.read(outputFile)).getImage().getScaledInstance(WIDTH / 2, HEIGHT / 2, Image.SCALE_SMOOTH)));
+            //Main.gui.scrollPane.setViewportView(Main.gui.imageView);
         } while (checkFontSize());
-        Main.gui.scrollPane.setViewportView(Main.gui.logArea);
+        //Main.gui.scrollPane.setViewportView(Main.gui.logArea);
         return thumbnailPath;
     }
 
     private static boolean checkFontSize() {
+        /*
         int response = JOptionPane.showOptionDialog(Main.getGUI(), "Please select an option.", "Thumbnail Generator",
                 JOptionPane.DEFAULT_OPTION, JOptionPane.PLAIN_MESSAGE, null,
                 new String[]{"Done", "Font size is too large", "Font size is too small", "Edit Text", "Quit"}, "Done");
@@ -156,6 +156,7 @@ public class ThumbnailGenerator {
         } else if (response == 4) {
             Main.exit(0);
         }
+         */
         return false;
     }
 

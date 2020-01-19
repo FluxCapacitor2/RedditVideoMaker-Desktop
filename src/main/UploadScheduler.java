@@ -292,6 +292,8 @@ public class UploadScheduler extends JDialog {
                     JOptionPane.showMessageDialog(null, "Unable to predict an upload time. Please enter a time for the video to be scheduled.");
                 }
                 */
+            } else {
+                UploadVideo.onDateTimeGathered(null);
             }
 
         } catch (GeneralSecurityException e) {

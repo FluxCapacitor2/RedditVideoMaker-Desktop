@@ -3,6 +3,7 @@ package server;
 import com.google.gson.Gson;
 import main.Config;
 import main.Main;
+import main.VideoManifest;
 import main.VideoManifestComment;
 import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.*;
@@ -21,11 +22,30 @@ import java.util.*;
 
 public class Capture {
 
+    private static final String CHROME_DRIVER = "D:/chromedriver/chromedriver.exe";
+    private static long startTime;
+
     private static <T> T[] append(T[] arr, T element) {
         final int N = arr.length;
         arr = Arrays.copyOf(arr, N + 1);
         arr[N] = element;
         return arr;
+    }
+
+    private static int captured = 0;
+    private static int total = 0;
+    private static boolean isCapturing = false;
+
+    public static boolean isCapturing() {
+        return isCapturing;
+    }
+
+    public static double getProgress() {
+        return (double) captured / (double) total;
+    }
+
+    public static long getStartTime() {
+        return startTime;
     }
 
     public static void main(String url, String[] ids, Map<String, String> query) throws IOException {
@@ -41,33 +61,46 @@ public class Capture {
 
         switch (selectionType) {
             case "last":
-                System.out.println("This is the LAST post of the video.");
+                Main.out("[Selection Type] This is the LAST post of the video.");
                 //Last post of the video! Run `Main` after we take our screenshots.
                 isLast = true;
                 //We don't `break` here because we can reuse the code in the next case.
             case "none":
                 //In the middle of the video
+                Main.out("[Selection Type] Gathering current manifest uid...");
                 uid = Config.prefs.get("currentManifestUid", "null");
+                //DON'T clear the current manifest because this isn't the first post (a new video)
                 break;
             case "first":
                 //First post of the video, new manifest!
+                Main.out("[Selection Type] Creating new manifest uid...");
                 uid = String.valueOf(System.currentTimeMillis());
+                Main.out("[Capture] Clearing current video manifest because this is the first post!");
+                Server.manifest = new VideoManifest();
                 Config.prefs.put("currentManifestUid", uid);
                 break;
+            case "firstandlast":
+                Main.out("[Selection Type] First and last post: Creating new manifest uid...");
+                uid = String.valueOf(System.currentTimeMillis());
+                Main.out("[Capture] Clearing current video manifest because this is the first post! (and last)");
+                Server.manifest = new VideoManifest();
+                Config.prefs.put("currentManifestUid", uid);
+                isLast = true;
+                break;
             default:
-                System.err.println("Invalid selection type: " + selectionType + ". Accepted values are 'none', 'first', and 'last'. Reverting to 'first'...");
+                Main.err("Invalid selection type: " + selectionType + ". Accepted values are 'none', 'first', 'last', and 'firstandlast'. Reverting to 'first'...");
                 uid = String.valueOf(System.currentTimeMillis());
                 break;
         }
         if (uid.equals("null")) {
             //We couldn't find the uid that we should have stored earlier!
-            System.err.println("There was an error finding the current video UID. Aborting...");
+            Main.err("There was an error finding the current video UID. Aborting...");
             return;
         }
 
-        System.out.println("Set manifest UID to " + uid);
+        Main.out("Set manifest UID to " + uid);
 
-        System.setProperty("webdriver.chrome.driver", "D:/chromedriver/chromedriver.exe");
+        System.setProperty("webdriver.chrome.driver", CHROME_DRIVER);
         ChromeOptions options = new ChromeOptions();
         options.setHeadless(true);
         options.setProxy(null);
@@ -95,15 +128,42 @@ public class Capture {
         thingIds.add(titleThingId);
         Collections.addAll(thingIds, ids);
 
+        total = 0;
+        captured = 0;
+        isCapturing = true;
+        startTime = System.currentTimeMillis();
+
+        for (String t : thingIds) {
+            if (total == 0) {
+                total++; //Top matter = 1 post
+            } else {
+                total += driver.findElements(By.cssSelector("#thing_" + t + ">.entry .md p")).size();
+            }
+        }
+
         int i = 0;
         for (String thingId : thingIds) {
-            System.out.println("Taking screenshot of post: " + thingId);
+            Main.out("Taking screenshot of post: " + thingId);
+
+            if (query.containsKey("edit_title")) {
+                ((JavascriptExecutor) driver).executeScript("document.querySelector('a.title').innerHTML = " + new Gson().toJson(query.get("edit_title")) + ";");
+            }
+
+            if (query.containsKey("edit_" + thingId)) {
+                //Main.out("URL argument found: edit_" + thingId + " = " + query.get("edit_" + thingId));
+                String val = query.get("edit_" + thingId);
+                //Change the text to the edited value
+                ((JavascriptExecutor) driver).executeScript("document.querySelector('#thing_" + thingId + ">.entry .md').innerHTML = " + new Gson().toJson(val) + ";");
+            } else {
+                Main.out("No 'edit' argument found for " + thingId);
+            }
+
             List<WebElement> els2 = new ArrayList<>();
-            String paraCssSelector = "";
+            String paraCssSelector;
             try {
                 List<WebElement> els;
                 if (i == 0) {
-                    System.out.println("Capturing top matter (post title).");
+                    Main.out("Capturing top matter (post title).");
                     els = driver.findElements(By.className("top-matter"));
                     paraCssSelector = ".top-matter";
                 } else {
@@ -111,10 +171,10 @@ public class Capture {
                     /*
                     try {
                         els = el.findElements(By.cssSelector(".expando .md p"));
-                        System.out.println("Capturing all paragraphs in expando.");
+                        Main.out("Capturing all paragraphs in expando.");
                         //There is an expando because there was no error thrown above!
                     } catch (NoSuchElementException e) {
-                        System.out.println("Capturing all paragraphs normally (no expando).");
+                        Main.out("Capturing all paragraphs normally (no expando).");
                         //Nope, no expando! Just capture normally.
                         els = el.findElements(By.tagName("p"));
                     }
@@ -129,15 +189,16 @@ public class Capture {
                 }
             } catch (NoSuchElementException e) {
                 i++;
-                System.out.println("Skipping post because it could not be found.");
+                Main.out("Skipping post because it could not be found.");
                 continue;
             }
 
             int j = 0;
             for (WebElement p : els2) {
-                System.out.println("Capturing " + paraCssSelector + "[" + j + "].");
+                captured++;
+                Main.out("Capturing " + paraCssSelector + "[" + j + "].");
                 if (p.getAttribute("class").contains("tagline")/* || (i != 0 && j == 0)*/) {
-                    System.out.println("Skipping screenshot of " + p.getText() + " because it is a tagline.");
+                    Main.out("Skipping screenshot of " + p.getText() + " because it is a tagline.");
                     j++;
                     continue;
                 }
@@ -162,13 +223,13 @@ public class Capture {
                         "    console.error(\"Error rendering image\", error);\n" +
                         "});", thingId);
 
-                System.out.println("Image data gathered: " + imageDataURL);
+                //Main.out("Image data gathered: " + imageDataURL);
                 byte[] data;
                 try {
                     data = DatatypeConverter.parseBase64Binary(imageDataURL.split(",")[1]);
                 } catch (ArrayIndexOutOfBoundsException e) {
                     j++;
-                    System.out.println("Skipping post because there was no image data.");
+                    Main.out("Skipping post because there was no image data.");
                     continue;
                 }
                 BufferedImage bufferedImage = ImageIO.read(new ByteArrayInputStream(data));
@@ -199,16 +260,19 @@ public class Capture {
         FileOutputStream f = new FileOutputStream(file);
         f.write(json.getBytes());
         f.close();
+        Main.out("[Capture] isLast = " + isLast);
+        isCapturing = false;
+        Main.out("[Capture] Finished.");
         if (isLast) {
-            Config.prefs.remove("currentManifestUid");
-            new Thread(() -> {
-                try {
-                    Main.main(new String[]{});
-                } catch (ClassNotFoundException | InstantiationException | UnsupportedLookAndFeelException | IllegalAccessException e) {
-                    e.printStackTrace();
-                }
-            }).start();
+            Config.prefs.put("currentManifestUid", String.valueOf(System.currentTimeMillis() + 1000));
+            Server.manifest = new VideoManifest();
+            Main.log = new StringBuilder();
+            try {
+                isCapturing = false;
+                Main.main(new String[]{});
+            } catch (ClassNotFoundException | UnsupportedLookAndFeelException | IllegalAccessException | InstantiationException e) {
+                e.printStackTrace();
+            }
         }
-        System.out.println("[Capture] Finished.");
     }
 }

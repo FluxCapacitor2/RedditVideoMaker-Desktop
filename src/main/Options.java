@@ -64,21 +64,21 @@ public class Options {
         fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
 
         dlFolder.addActionListener(e -> {
-            int returnVal = fc.showDialog(Main.getGUI(), "Select Folder");
+            int returnVal = fc.showDialog(null, "Select Folder");
             if (returnVal == JFileChooser.APPROVE_OPTION) {
                 dlFolder.setText(fc.getSelectedFile().getAbsolutePath());
             }
         });
 
         libFolder.addActionListener(e -> {
-            int returnVal = fc.showDialog(Main.getGUI(), "Select Folder");
+            int returnVal = fc.showDialog(null, "Select Folder");
             if (returnVal == JFileChooser.APPROVE_OPTION) {
                 libFolder.setText(fc.getSelectedFile().getAbsolutePath());
             }
         });
 
         outFolder.addActionListener(e -> {
-            int returnVal = fc.showDialog(Main.getGUI(), "Select Folder");
+            int returnVal = fc.showDialog(null, "Select Folder");
             if (returnVal == JFileChooser.APPROVE_OPTION) {
                 outFolder.setText(fc.getSelectedFile().getAbsolutePath());
             }
@@ -112,7 +112,7 @@ public class Options {
     }
 
     private void edit() {
-        Main.configFrame.setVisible(false);
+        //Main.configFrame.setVisible(false);
         try {
             new EditManifest(Main.getManifest(Main.getDLid()).comments);
         } catch (FileNotFoundException e) {
@@ -149,6 +149,6 @@ public class Options {
     }
 
     void close() {
-        Main.configFrame.setVisible(false);
+        //Main.configFrame.setVisible(false);
     }
 }

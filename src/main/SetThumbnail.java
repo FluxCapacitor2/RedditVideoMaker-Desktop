@@ -46,9 +46,9 @@ public class SetThumbnail {
         MediaHttpUploaderProgressListener listener = progress -> SwingUtilities.invokeLater(() -> {
             try {
                 Main.out("Thumbnail upload progress changed to " + (progress.getProgress() * 100) + "%");
-                Main.gui.progressLabel.setText(Math.round(progress.getProgress() * 100) + "%");
-                Main.calculateRemainingTime(startTime, 100, (long) (progress.getProgress() * 100));
-                Main.gui.progressBar.setValue((int) (progress.getProgress() * 100));
+                Main.setProgressValue((long) progress.getProgress() * 100);
+                Main.setMaxProgressValue(100);
+                Main.calculateRemainingTime(startTime, 1000, (long) progress.getProgress() * 1000);
             } catch (IOException e) {
                 e.printStackTrace();
             }
