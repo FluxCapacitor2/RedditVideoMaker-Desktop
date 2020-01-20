@@ -196,8 +196,12 @@ public class Server {
                     headers.add("Content-Type", "text/html; charset=ISO-8859-1");
                     t.sendResponseHeaders(200, response.getBytes().length);
                     OutputStream os = t.getResponseBody();
-                    os.write(response.getBytes());
-                    os.close();
+                    try {
+                        os.write(response.getBytes());
+                        os.close();
+                    } catch (IOException e) {
+                        System.err.println(e.getMessage());
+                    }
                 }
                 System.out.println("SubredditHandler finished.");
             } catch (IOException e) {
