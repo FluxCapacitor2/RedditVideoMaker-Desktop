@@ -1,17 +1,31 @@
 package server;
 
+import com.google.gson.Gson;
+import main.Config;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.Inet4Address;
 import java.net.URLEncoder;
 import java.net.UnknownHostException;
+import java.util.HashMap;
 
 public class RedditParser {
+
+    private static HashMap subreddits = null;
+
     public static String main(String url, boolean hideButtons) throws IOException {
+
+        if (subreddits == null) {
+            subreddits = new Gson().fromJson(new InputStreamReader(new FileInputStream(new File(Config.getLibraryFolder(), "subreddits.json"))), HashMap.class);
+        }
+
         //Open Reddit and parse its HTML
         String redditUrl = "https://old.reddit.com/" + url;
         System.out.println("Waiting for " + redditUrl);
@@ -58,17 +72,10 @@ public class RedditParser {
                                     "<button id='sendBtn'>Send</button>");
         }
         doc.append("<script type='text/javascript'>document.getElementById('tText').value = decodeURIComponent(\"" + URLEncoder.encode(postTitle, "UTF-8") + "\").replace(/\\+/g, ' ');</script>");
-        doc.select("#header")
-                //Subreddit quick links
-                .prepend("<button><a href='/r/ProRevenge'>r/ProRevenge</a></button>\n" +
-                        "<button><a href='/r/PettyRevenge'>r/PettyRevenge</a></button>\n" +
-                        "<button><a href='/r/MaliciousCompliance'>r/MaliciousCompliance</a></button>\n" +
-                        "<button><a href='/r/NuclearRevenge'>r/NuclearRevenge</a></button>\n" +
-                        "<button><a href='/r/AskReddit'>r/AskReddit</a></button>\n" +
-                        "<button><a href='/r/tifu'>r/tifu</a></button>\n" +
-                        "<button><a href='/r/AmITheAsshole'>r/AITA</a></button>\n" +
-                        "<button><a href='/r/TalesFromTechSupport'>r/TalesFromTechSupport</a></button>\n" +
-                        "<button><a href='/r/TalesFromRetail'>r/TalesFromRetail</a></button>");
+
+        for (Object key : subreddits.keySet()) {
+            doc.select("#header").prepend("<button><a href='/" + key + "'>" + key + "</a></button>");
+        }
 
         System.out.println("Finished removing the sidebar, subreddit stylesheet, and adding the send button.");
 

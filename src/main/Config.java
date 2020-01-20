@@ -33,7 +33,7 @@ public class Config {
         prefs.put("downloadsFolder", downloadsFolder);
     }
 
-    static String getLibraryFolder() {
+    public static String getLibraryFolder() {
         return prefs.get("libraryFolder", "D:/Library");
     }
 

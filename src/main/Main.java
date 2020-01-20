@@ -83,30 +83,30 @@ public class Main {
             title = sb.toString();
         }
 
-        Map<String, String> descs = new HashMap<>();
+        //Map<String, String> descs = new HashMap<>();
         int n = titles.length;
-        descs.put("r/AskReddit", "Welcome to r/AskReddit, where redditors answer the "
-                + pluralize(n, "question", "questions"));
-        descs.put("r/ProRevenge", "Welcome to r/ProRevenge, where redditors share their stories of going out" +
-                " of their way to get revenge. Today's " + pluralize(n, "story", "stories"));
-        descs.put("r/pettyrevenge", "Welcome to r/PettyRevenge, where redditors talk about their experiences " +
-                "with going out of their way to get minor revenge. Today's " + pluralize(n, "story", "stories"));
-        descs.put("r/MaliciousCompliance", "Welcome to r/MaliciousCompliance, where redditors talk about the times " +
-                "they complied with someone's orders for the worse. Today's " + pluralize(n, "story", "stories"));
-        descs.put("r/NuclearRevenge", "Welcome to r/NuclearRevenge, where redditors share their revenge stories, which " +
-                "are extreme and sometimes legally questionable. Today's " + pluralize(n, "story", "stories"));
-        descs.put("r/tifu", "Welcome to r/TIFU (Today I F*cked Up), where redditors share their stories of daily life " +
-                "going horribly wrong. Today's " + pluralize(n, "story", "stories"));
-        descs.put("r/talesfromtechsupport", "Welcome to r/TalesFromTechSupport, where redditors share their " +
-                "stories from working in IT or other similar technology jobs. Today's " + pluralize(n, "story", "stories"));
-        descs.put("r/TalesFromRetail", "Welcome to r/TalesFromRetail, where redditors share their " +
-                "stories from working in retail or other similar service jobs. Today's " + pluralize(n, "story", "stories"));
-        descs.put("r/entitledparents", "Welcome to r/EntitledParents, where redditors share their stories of dealing " +
-                "with entitled parents who think the world caters to them. Today's " + pluralize(n, "story", "stories"));
-        descs.put("r/StoriesAboutKevin", "Welcome to r/StoriesAboutKevin, where redditors post stories of \"Kevins\", " +
-                "people that are absolutely braindead and probably couldn't survive on their own. Today's " +
-                pluralize(n, "story", "stories"));
-        return descs.getOrDefault(sr, "Welcome to " + sr + ". Today's " + pluralize(n, "story", "stories")) + ":" + pluralize(n, " ", "\n") + title;
+        Gson g = new Gson();
+        try {
+            String blurb = null;
+            HashMap ds = g.fromJson(new InputStreamReader(new FileInputStream(new File(Config.getLibraryFolder(), "subreddits.json"))), HashMap.class);
+            for (Object key : ds.keySet()) {
+                if (((String) key).equalsIgnoreCase(sr)) {
+                    blurb = String.format(ds.get(key).toString(), pluralize(n, ": ", ":\n") + title);
+                    if (n == 1) {
+                        blurb = blurb.replace("(s)", "");
+                    } else {
+                        blurb = blurb.replace("y(s)", "ies");
+                        blurb = blurb.replace("(s)", "s");
+                    }
+                }
+            }
+            if (blurb != null) {
+                return blurb;
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+        return "Welcome to " + sr + ". Today's " + pluralize(n, "story", "stories") + ":" + pluralize(n, " ", "\n") + title;
     }
 
     private static String pluralize(int n, String singular, String plural) {
