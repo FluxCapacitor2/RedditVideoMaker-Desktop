@@ -7,23 +7,33 @@ button {
     border: 1px solid rgba(255, 255, 255, 0.5);
 }
 
-@media only screen and (max-width: 800px) {
-    .md p, button {
+.fw-on-mobile {
+    display: inline;
+}
+
+@media only screen and (max-width: 1025px) {
+    body.no-hide-buttons .fw-on-mobile {
+        display: block;
+    }
+
+    body.no-hide-buttons .md p, body.no-hide-buttons label {
         font-size: 24pt !important;
     }
 
-    input#tText {
+    body.no-hide-buttons input#tText {
         width: 100% !important;
         border: 1px solid rgba(255, 255, 255, 0.5);
+        font-size: 20pt;
     }
 
-    p.tagline {
+    body.no-hide-buttons p.tagline {
         font-size: 15px !important;
     }
 
-    button {
+    body.no-hide-buttons button {
         padding: 12px;
         margin: 4px;
+        font-size: 30pt !important;
     }
 }
 

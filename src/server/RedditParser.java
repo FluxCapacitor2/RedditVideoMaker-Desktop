@@ -45,15 +45,15 @@ public class RedditParser {
                     .append(
                             "<form id='postOptions'>\n" +
                                     "    <p>Post Type:</p>\n" +
-                                    "    <input type='radio' name='postType' value='none' id='pt1'><label for='pt1'>None</label>\n" +
-                                    "    <input type='radio' name='postType' value='first' id='pt2'><label for='pt2'>First</label>\n" +
-                                    "    <input type='radio' name='postType' value='last' id='pt3'><label for='pt3'>Last</label>\n" +
-                                    "    <input type='radio' name='postType' value='firstandlast' id='pt4'><label for='pt4'>First & Last</label>\n" +
-                                    "    <input type='text' name='thumbnailText' placeholder='Highlight text " +
+                                    "    <div class='fw-on-mobile'><input type='radio' name='postType' value='none' id='pt1'><label for='pt1'>None</label></div>\n" +
+                                    "    <div class='fw-on-mobile'><input type='radio' name='postType' value='first' id='pt2'><label for='pt2'>First</label></div>\n" +
+                                    "        <div class='fw-on-mobile'><input type='radio' name='postType' value='last' id='pt3'><label for='pt3'>Last</label></div>\n" +
+                                    "            <div class='fw-on-mobile'><input type='radio' name='postType' value='firstandlast' id='pt4'><label for='pt4'>First & Last</label></div>\n" +
+                                    "                <div class='fw-on-mobile'><input type='text' name='thumbnailText' placeholder='Highlight text " +
                                     "using < and >.'\n" +
-                                    "                                        style='width:300px;' value='Loading...' id='tText'>\n" +
-                                    "    <input type='checkbox' name='isFeatured' id='isFeatured'><label for='isFeatured'>Feature this\n" +
-                                    "    post in the YouTube video title.</label>\n" +
+                                    "                                        style='width:300px;' value='Loading...' id='tText'><br class='show-on-mobile'></div>\n" +
+                                    "    <div class='fw-on-mobile'><input type='checkbox' name='isFeatured' id='isFeatured'><label for='isFeatured'>Feature this\n" +
+                                    "    post in the YouTube video title.</label><br class='show-on-mobile'></div>\n" +
                                     "</form>\n" +
                                     "<button id='sendBtn'>Send</button>");
         }
@@ -73,6 +73,7 @@ public class RedditParser {
         System.out.println("Finished removing the sidebar, subreddit stylesheet, and adding the send button.");
 
         if (!hideButtons) {
+            doc.body().addClass("no-hide-buttons");
             for (Element e : els) {
                 String thingId = e.siblingElements().select("input[name=thing_id]").val();
                 //System.out.println("[comment found] " + e.html());

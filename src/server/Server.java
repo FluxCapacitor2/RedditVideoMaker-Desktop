@@ -43,51 +43,6 @@ public class Server {
         return query_pairs;
     }
 
-    /*
-        private static class RedditApiMoreChildrenHandler implements HttpHandler {
-            @Override
-            public void handle(HttpExchange t) throws IOException {
-                String method = t.getRequestMethod();
-                if (method.equalsIgnoreCase("POST")) {
-                    String url = "https://api.reddit.com/" + t.getRequestURI().toString() + "?";
-                    System.out.println("Requesting URL: " + url);
-                    Request r = Request.Post(url);
-                    t.getRequestHeaders().forEach((name, values) -> r.addHeader(name, values.toString()));
-                    r.bodyStream(t.getRequestBody());
-                    Response res = r.execute();
-                    byte[] response = res.returnContent().asBytes();
-                    t.sendResponseHeaders(200, response.length);
-                    printRequestInfo(t);
-                    OutputStream os = t.getResponseBody();
-                    os.write(response);
-                    os.close();
-                }
-
-            }
-        }
-    */
-
-    private static void printRequestInfo(HttpExchange exchange) {
-        /*
-        System.out.println("-- headers --");
-        Headers requestHeaders = exchange.getRequestHeaders();
-        requestHeaders.entrySet().forEach(System.out::println);
-
-        System.out.println("-- principle --");
-        HttpPrincipal principal = exchange.getPrincipal();
-        System.out.println(principal);
-
-        System.out.println("-- HTTP method --");
-        String requestMethod = exchange.getRequestMethod();
-        System.out.println(requestMethod);
-
-        System.out.println("-- query --");
-        URI requestURI = exchange.getRequestURI();
-        String query = requestURI.getQuery();
-        System.out.println(query);
-         */
-    }
-
     private static class GeneralHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange httpExchange) throws IOException {
@@ -237,9 +192,9 @@ public class Server {
                     //Go to Reddit & create "add" buttons, etc.
                     String response = RedditParser.main(t.getRequestURI().toString(), (query != null && query.containsKey("hideButtons")));
                     Headers headers = t.getResponseHeaders();
+                    //headers.add("Content-Type", "text/html; charset=UTF-8");
                     headers.add("Content-Type", "text/html; charset=ISO-8859-1");
                     t.sendResponseHeaders(200, response.getBytes().length);
-                    printRequestInfo(t);
                     OutputStream os = t.getResponseBody();
                     os.write(response.getBytes());
                     os.close();
@@ -291,7 +246,6 @@ public class Server {
             response = responseBuilder.toString();
             t.getResponseHeaders().set("Content-Type", this.contentType);
             t.sendResponseHeaders(200, response.getBytes().length);
-            printRequestInfo(t);
             OutputStream os = t.getResponseBody();
             os.write(response.getBytes());
             os.close();
