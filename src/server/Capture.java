@@ -50,6 +50,9 @@ public class Capture {
 
     public static void main(String url, String[] ids, Map<String, String> query) throws IOException {
 
+        isCapturing = true;
+        Main.out("[Capture] Starting...");
+
         String selectionType = query.get("postType"); //"first", "none", or "last".
         String uid;
         boolean isLast = false;
@@ -78,6 +81,8 @@ public class Capture {
                 Main.out("[Capture] Clearing current video manifest because this is the first post!");
                 Server.manifest = new VideoManifest();
                 Config.prefs.put("currentManifestUid", uid);
+                //Because this is the first post, clear the logs
+                Main.log = new StringBuilder();
                 break;
             case "firstandlast":
                 Main.out("[Selection Type] First and last post: Creating new manifest uid...");
@@ -98,14 +103,17 @@ public class Capture {
             return;
         }
 
-        Main.out("Set manifest UID to " + uid);
+        Main.out("[Capture] Set manifest UID to " + uid);
+        Main.out("[Capture] Starting ChromeDriver...");
 
         System.setProperty("webdriver.chrome.driver", CHROME_DRIVER);
         ChromeOptions options = new ChromeOptions();
         options.setHeadless(true);
         options.setProxy(null);
         WebDriver driver = new ChromeDriver(options);
+        Main.out("[Capture] Driver started");
         driver.get(url);
+        Main.out("[Capture] URL Loaded");
 
         if (Server.manifest.URLs == null) Server.manifest.URLs = new String[]{};
         if (Server.manifest.titles == null) Server.manifest.titles = new String[]{};
@@ -130,12 +138,12 @@ public class Capture {
 
         total = 0;
         captured = 0;
-        isCapturing = true;
         startTime = System.currentTimeMillis();
 
+        //Calculate the total number of posts to track progress.
         for (String t : thingIds) {
             if (total == 0) {
-                total++; //Top matter = 1 post
+                total++; //Top matter is always just 1 post
             } else {
                 total += driver.findElements(By.cssSelector("#thing_" + t + ">.entry .md p")).size();
             }
@@ -167,18 +175,6 @@ public class Capture {
                     els = driver.findElements(By.className("top-matter"));
                     paraCssSelector = ".top-matter";
                 } else {
-                    //Check if there's an expando
-                    /*
-                    try {
-                        els = el.findElements(By.cssSelector(".expando .md p"));
-                        Main.out("Capturing all paragraphs in expando.");
-                        //There is an expando because there was no error thrown above!
-                    } catch (NoSuchElementException e) {
-                        Main.out("Capturing all paragraphs normally (no expando).");
-                        //Nope, no expando! Just capture normally.
-                        els = el.findElements(By.tagName("p"));
-                    }
-                     */
                     els = driver.findElements(By.cssSelector("#thing_" + thingId + ">.entry .md p"));
                     paraCssSelector = "#thing_" + thingId + ">.entry .md p";
                 }
@@ -189,7 +185,7 @@ public class Capture {
                 }
             } catch (NoSuchElementException e) {
                 i++;
-                Main.out("Skipping post because it could not be found.");
+                Main.out("Skipping post \"" + thingId + "\" because it could not be found.");
                 continue;
             }
 
@@ -197,54 +193,56 @@ public class Capture {
             for (WebElement p : els2) {
                 captured++;
                 Main.out("Capturing " + paraCssSelector + "[" + j + "].");
-                if (p.getAttribute("class").contains("tagline")/* || (i != 0 && j == 0)*/) {
-                    Main.out("Skipping screenshot of " + p.getText() + " because it is a tagline.");
-                    j++;
-                    continue;
-                }
-                VideoManifestComment c = new VideoManifestComment();
-                c.text = (i == 0 ? p.findElement(By.cssSelector("a.title")).getText() : p.getText());
-
-                JavascriptExecutor js = (JavascriptExecutor) driver;
-                //js.executeScript("window.scrollTo(" + el.getLocation().getY() + "," + el.getLocation().getX() + ");");
-                String imageDataURL = (String) js.executeAsyncScript("var thingId = arguments[0];\n" +
-                        "var callback = arguments[arguments.length - 1];\n" +
-                        "console.log(\"Capturing item with thing ID \", thingId);\n" +
-                        "var thing = document.getElementById(\"thing_\" + thingId);\n" +
-                        "var el = thing.querySelectorAll('" + paraCssSelector + "')[" + (j) + "];\n" +
-                        "console.log('Capturing element', el);" +
-                        "thing.scrollIntoView(true);\n" +
-                        "domtoimage.toPng(el, {\n" +
-                        "    bgcolor: '#414141'\n" +
-                        "}).then(function(dataURL) {\n" +
-                        "    console.log(\"Finished capturing image\", dataURL);\n" +
-                        "    callback(dataURL);\n" +
-                        "}).catch(function(error) {\n" +
-                        "    console.error(\"Error rendering image\", error);\n" +
-                        "});", thingId);
-
-                //Main.out("Image data gathered: " + imageDataURL);
-                byte[] data;
                 try {
-                    data = DatatypeConverter.parseBase64Binary(imageDataURL.split(",")[1]);
-                } catch (ArrayIndexOutOfBoundsException e) {
+                    if (p.getAttribute("class").contains("tagline")) {
+                        j++;
+                        continue;
+                    }
+                    VideoManifestComment c = new VideoManifestComment();
+                    c.text = (i == 0 ? p.findElement(By.cssSelector("a.title")).getText() : p.getText());
+
+                    JavascriptExecutor js = (JavascriptExecutor) driver;
+                    String imageDataURL = (String) js.executeAsyncScript("var thingId = arguments[0];\n" +
+                            "var callback = arguments[arguments.length - 1];\n" +
+                            "console.log(\"Capturing item with thing ID \", thingId);\n" +
+                            "var thing = document.getElementById(\"thing_\" + thingId);\n" +
+                            "var el = thing.querySelectorAll('" + paraCssSelector + "')[" + (j) + "];\n" +
+                            "console.log('Capturing element', el);" +
+                            "thing.scrollIntoView(true);\n" +
+                            "domtoimage.toPng(el, {\n" +
+                            "    bgcolor: '#414141'\n" +
+                            "}).then(function(dataURL) {\n" +
+                            "    console.log(\"Finished capturing image\", dataURL);\n" +
+                            "    callback(dataURL);\n" +
+                            "}).catch(function(error) {\n" +
+                            "    console.error(\"Error rendering image\", error);\n" +
+                            "});", thingId);
+
+                    //Main.out("Image data gathered: " + imageDataURL);
+                    byte[] data;
+                    try {
+                        data = DatatypeConverter.parseBase64Binary(imageDataURL.split(",")[1]);
+                    } catch (ArrayIndexOutOfBoundsException e) {
+                        j++;
+                        Main.out("Skipping post because there was no image data.");
+                        continue;
+                    }
+                    BufferedImage bufferedImage = ImageIO.read(new ByteArrayInputStream(data));
+                    File screenshotLocation = new File(Config.getDownloadsFolder() + "/rvm_dl_" + uid + "_thing_" + thingId + "_" + j + "_para" + (i == 0 ? "_title" : "") + ".png");
+                    ImageIO.write(bufferedImage, "png", screenshotLocation);
+
+                    c.name = screenshotLocation.getName();
+                    if (i == 0) c.isTitle = true;
+                    c.thingId = thingId + "_" + j + "_para" + (i == 0 ? "_title" : "");
+                    c.DLid = uid;
+                    c.subreddit = sr;
+                    c.indexInPost = i;
+
+                    comments.add(c);
                     j++;
-                    Main.out("Skipping post because there was no image data.");
-                    continue;
+                } catch (NoSuchElementException e) {
+                    Main.out("Skipping capture because the element to capture could not be found. (" + paraCssSelector + ")");
                 }
-                BufferedImage bufferedImage = ImageIO.read(new ByteArrayInputStream(data));
-                File screenshotLocation = new File(Config.getDownloadsFolder() + "/rvm_dl_" + uid + "_thing_" + thingId + "_" + j + "_para" + (i == 0 ? "_title" : "") + ".png");
-                ImageIO.write(bufferedImage, "png", screenshotLocation);
-
-                c.name = screenshotLocation.getName();
-                if (i == 0) c.isTitle = true;
-                c.thingId = thingId + "_" + j + "_para" + (i == 0 ? "_title" : "");
-                c.DLid = uid;
-                c.subreddit = sr;
-                c.indexInPost = i;
-
-                comments.add(c);
-                j++;
             }
             i++;
         }
@@ -252,6 +250,7 @@ public class Capture {
         for (VideoManifestComment c : comments) {
             Server.manifest.comments = append(Server.manifest.comments, c);
         }
+        //Write the manifest file
         Gson gson = new Gson();
         String json = gson.toJson(Server.manifest);
         File file = new File(Config.getDownloadsFolder() + "/rvm_manifest_" + uid + ".json");
@@ -266,8 +265,8 @@ public class Capture {
         if (isLast) {
             Config.prefs.put("currentManifestUid", String.valueOf(System.currentTimeMillis() + 1000));
             Server.manifest = new VideoManifest();
-            Main.log = new StringBuilder();
             try {
+                //Start rendering the video because the capture finished.
                 isCapturing = false;
                 Main.main(new String[]{});
             } catch (ClassNotFoundException | UnsupportedLookAndFeelException | IllegalAccessException | InstantiationException e) {

@@ -9,14 +9,10 @@ import org.jetbrains.annotations.NotNull;
 import server.Capture;
 
 import javax.swing.*;
-import java.awt.*;
 import java.io.*;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.security.GeneralSecurityException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.List;
 import java.util.Timer;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -55,13 +51,13 @@ public class Main {
 
     private static ArrayList<String> thumbnails;
 
-    private static int response;
+    /* By default, set the primary post number to the first post just in case none was selected in the manifest. */
+    private static int primaryPost = 0;
 
     private static VideoManifest vm;
 
     private static String DLid;
 
-    private static StringBuilder audioCredits;
     private static String progressTitle = "Loading";
 
     /**
@@ -270,10 +266,6 @@ public class Main {
         return minutes + "m " + tempSeconds + "s";
     }
 
-    private static boolean requestUserYesOrNo(String label) {
-        return JOptionPane.showConfirmDialog(null, label) == JOptionPane.YES_OPTION;
-    }
-
     @NotNull
     static String requestUserInput(String label) {
         return JOptionPane.showInputDialog(null, label);
@@ -355,38 +347,7 @@ public class Main {
                 calculateRemainingTime(startTime1, vm.comments.length, i);
             }
 
-            //Request confirmation to start rendering the videos/audio track/thumbnail.
-            //boolean result = requestUserYesOrNo("Proceed?\n\nVideo Length: " +
-            //        convertToTimeString((int) (length + 20)) +
-            //        "\nBackground: " + background + "\nComments: " + (vm.comments.length - 1)
-            //        + "\nTitle(s): " + Arrays.toString(vm.titles) + "\nSubreddit(s): " + Arrays.toString(vm.subreddits));
-            boolean result = true;
-            if (!result) {
-                exit(0);
-            }
-            /*
-            //Make sure all of the files specified in the manifest exist so that we don't have any mysterious problems later.
-            for (VideoManifestComment comment : vm.comments) {
-                if (!new File(Config.getDownloadsFolder() + "/" + comment.name).exists()) {
-                    err("Required file " + comment.name + " does not exist.");
-                    if (requestUserYesOrNo("You are missing a required file from the download: \"" +
-                            comment.name + "\"\n\nClick Yes to go to the editor, or" +
-                            " No/Cancel to stop the program.")) {
-                        //guiFrame.dispose();
-                        new EditManifest(vm.comments);
-                        return;
-                    }
-                    exit(1);
-                } else {
-                    out("Required file " + comment.name + " exists.");
-                }
-            }
-            */
-            /*
-            There is a bug currently with the Server that sometimes means posts from previous captures/videos are included in the
-            current manifest. We can hack around this here by just removing comments from the manifest if they reference an
-            unknown/nonexistant file.
-             */
+            //Ignore nonexistant files because those would raise errors in our FFmpeg commands.
             ArrayList<VideoManifestComment> fixedComments = new ArrayList<>();
             for (VideoManifestComment c : vm.comments) {
                 if (new File(Config.getDownloadsFolder(), c.name).exists()) {
@@ -394,35 +355,24 @@ public class Main {
                 } else out("[WARNING] Ignoring file " + c.name + " because it does not exist.");
             }
             vm.comments = fixedComments.toArray(new VideoManifestComment[]{});
-            //Start by asking the user to pick a post title to be shown in the video.
-                    /*
-                    out("Selecting a video title to use...");
-                    if (vm.titles.length == 1) {
-                        response = 0;
-                    } else {
-                        response = JOptionPane.showOptionDialog(null,
-                                "Please pick a title to be the most prominently shown in the video's metadata: ",
-                                "Select an option", JOptionPane.DEFAULT_OPTION, JOptionPane.PLAIN_MESSAGE,
-                                null, vm.titles, vm.titles[0]);
-                    }
-                     */
-            //This option is now presented in the manifest.
+
+            //Find which video title was selected to be the primary
             for (i = 0; i < vm.isFeatured.length; i++) {
                 if (vm.isFeatured[i]) {
-                    response = i;
+                    primaryPost = i;
                     break;
                 }
             }
 
-            out("Selected option: " + response + " (" + vm.titles[response] + ")");
+            out("Found primary video title: " + primaryPost + " (" + vm.titles[primaryPost] + ")");
 
-            String title = vm.titles[response];
-            String subreddit = vm.subreddits[response];
-            String URL = vm.URLs[response];
+            String title = vm.titles[primaryPost];
+            String subreddit = vm.subreddits[primaryPost];
+            String URL = vm.URLs[primaryPost];
 
             setTitle("Generating thumbnail");
 
-            //Make the thumbnail for the video (which is also used in the first comment temp video)
+            //Make a thumbnail for each title (to be shown in the title, and one will be set to the YouTube video thumbnail)
             thumbnails = new ArrayList<>();
             i = 0;
             for (VideoManifestComment comment : vm.comments) {
@@ -436,7 +386,7 @@ public class Main {
             String videoTitle = sr + " | " + title;
 
             while (videoTitle.length() > 100) {
-                videoTitle = requestUserInput("The video title is over 100 characters. Please reformat the title.\nOriginal Title: " + videoTitle);
+                videoTitle = videoTitle.substring(0, 99);
             }
 
             //Generate music track
@@ -444,7 +394,7 @@ public class Main {
             setTitle("Generating audio track");
             ArrayList<File> audioFiles = randomizeFilesInFolder(Config.getLibraryFolder() + "/audio");
             ArrayList<File> audioFiles2 = new ArrayList<>();
-            audioCredits = new StringBuilder("\uD83C\uDFB6 Music credits:\n");
+            StringBuilder audioCredits = new StringBuilder("\uD83C\uDFB6 Music credits:\n");
             double position = 0;
             for (File f : audioFiles) {
                 String len = getOutputFromCommand("\"" + Config.getLibraryFolder() + "/bin/ffprobe.exe\" -v error -select_streams a:0 -show_entries stream=duration -of default=noprint_wrappers=1:nokey=1 \"" + f.getAbsolutePath() + "\"");
@@ -465,8 +415,6 @@ public class Main {
                     .append(" ")
                     .append(OUTRO_SONG)
                     .append("\n");
-
-            //exec("cmd /c start \"(1/1) Generating Audio Track\" /min /wait \"" + Config.getLibraryFolder() + "/bin/ffmpeg\" " + inputAudioFiles.toString() + " -filter_complex \"" + audioConcatData + "concat=n=" + audioFiles2.size() + ":v=0:a=1[outa]\" -map \"[outa]\" -y rvm_audio_" + DLid + ".mp3");
 
             FFmpeg ffmpeg = createFFmpeg();
 
@@ -512,7 +460,6 @@ public class Main {
                 long individualStartTime = System.currentTimeMillis();
                 String out = "rvm_temp_" + comment.DLid + "_thing_" + comment.thingId + ".mp4";
                 File outFile = new File(Config.getDownloadsFolder() + "/" + out);
-                out("Checking if " + outFile.getAbsolutePath() + " exists... " + outFile.exists());
                 outputFiles.add(out);
                 if (!outFile.exists()) {
                     setProgressValue(i);
@@ -524,16 +471,6 @@ public class Main {
                         png = "rvm_final_" + comment.DLid + "_id_" + k + "_thumbnail.png";
                         k++;
                     }
-
-                    double tempVideoLength = Double.parseDouble(getOutputFromCommand("\"" +
-                            Config.getLibraryFolder() + "/bin/ffprobe.exe\" -v error -show_entries format=duration " +
-                            "-of default=noprint_wrappers=1:nokey=1 " + mp3));
-
-                    out("Temporary video length found: " + tempVideoLength);
-
-                    ImageIcon icon = new ImageIcon(png);
-                    //gui.renderPreview.setIcon(getScaledImage(icon, (icon.getIconWidth() / icon.getIconHeight()) * 400, 400));
-
 
                     FilterChain filterChain = FilterChain.of(
                             Filter.withName("scale")
@@ -595,19 +532,11 @@ public class Main {
                             .setOverwriteOutput(true)
                             .addOutput(UrlOutput.toPath(outFile.toPath()))
                             .setLogLevel(LogLevel.INFO)
-                            .setProgressListener(p -> {
-                                if (p.getTimeMillis() != null) {
-                                    //calculateIndRemainingTime(individualStartTime, (long) tempVideoLength, p.getTimeMillis() / 1000);
-                                } else {
-                                    //gui.individualProgressBar.setIndeterminate(true);
-                                }
-                            })
                             .setOutputListener(s -> {
                                 if (REPORT_FFMPEG_OUTPUT) out("[FFmpeg CLI] > " + s);
                                 return false;
-                            });
-
-                    ffmpeg1.execute();
+                            })
+                            .execute();
                 } else {
                     out("File " + out + " already exists! Skipping...");
                     i++;
@@ -628,17 +557,14 @@ public class Main {
             for (String f : outputFiles) {
                 ffmpeg2.addInput(
                         UrlInput.fromPath(new File(Config.getDownloadsFolder() + "/" + f).toPath())
-                        //.addArguments("-hwaccel", "nvdec")
                 );
             }
             ffmpeg2
                     .addInput(
                             UrlInput.fromPath(new File(Config.getDownloadsFolder() + "/" + audioFile).toPath())
-                            //.addArguments("-hwaccel", "nvdec")
                     )
                     .addInput(
                             UrlInput.fromPath(new File(outro).toPath())
-                            //.addArguments("-hwaccel", "nvdec")
                     );
             Filter concatFilter = Filter.withName("concat");
             for (i = 0; i < outputFiles.size(); i++) {
@@ -739,7 +665,7 @@ public class Main {
             String finalPath = Config.getDownloadsFolder() + "/rvm_final_" + DLid + ".mp4";
 
             //Upload the video to YouTube
-            setTitle("Starting upload to YouTube");
+            setTitle("Uploading to YouTube");
             List<String> tags = new ArrayList<>(Arrays.asList(
                     "Exquisite Reddit", "AMA", "Q&A", vm.subreddits[0]
             ));
@@ -756,12 +682,10 @@ public class Main {
                         break;
                     }
                     //If this is still running than we haven't reached the limit yet, add the tag to the list.
-                    //Make sure we remove punctuation or else YouTube will parse the tags wrong and they will be
-                    //all combined into one "metatag"
-                    tags.add(s.replaceAll("[,?!.\\-=()`~\\[\\]{}*/<>]", ""));
+                    //Make sure we remove commas or else YouTube will parse the tags incorrectly
+                    tags.add(s.replaceAll(",", ""));
                 }
             }
-            //tags.addAll(Arrays.asList(title.split(" ")));
             out("Setting video tags: " + tags.toString());
 
             StringBuilder description = new StringBuilder(getDescriptionBlurb(sr, vm.titles) +
@@ -801,7 +725,6 @@ public class Main {
             description.append("\n\nPosts and comments may be edited for clarity or length. " +
                     "We make no guarantee on the validity of the content showcased in our videos.");
 
-            setTitle("Uploading to YouTube");
             setMaxProgressValue(100);
             setProgressValue(0);
             UploadVideo.main(finalPath, videoTitle, description.toString(), tags);
@@ -856,77 +779,43 @@ public class Main {
     static void onVideoIdGathered(String videoId) throws GeneralSecurityException, IOException {
         setTitle("Applying thumbnail");
         setProgressValue(2);
-        SetThumbnail.main(videoId, thumbnails.get(response));
+        SetThumbnail.main(videoId, thumbnails.get(primaryPost));
 
         out("Upload finished!");
 
-        if (/*requestUserYesOrNo("The upload has finished. Would you like to open your " +
-                "video in YouTube Studio?")*/false) {
-            new Thread(() -> {
-                try {
-                    String url = "https://studio.youtube.com/video/" + videoId + "/edit";
-                    String url2 = null;
-                    //YouTube yt = ApiUtils.getService();
-                    //VideoListResponse response = yt.videos().list("status").setId(videoId).execute();
-                    //String status = response.getItems().get(0).getProcessingDetails().getProcessingStatus();
-                    /*if (status.equals("succeeded")) {
-                        //It processed. We can direct the user to the end screen editor.
-                        url2 = "https://www.youtube.com/endscreen?v=" + videoId;
-                    }*/
-                    if (System.getProperty("user.home").equals("C:\\Users\\tntaw")) {
-                        exec("C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe --profile-directory=\"Profile 2\" " + url);
-                        if (url2 != null)
-                            exec("C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe --profile-directory=\"Profile 2\" " + url2);
-                    } else {
-                        Desktop.getDesktop().browse(new URI(url));
-                        if (url2 != null) Desktop.getDesktop().browse(new URI(url2));
-                    }
-                } catch (IOException | InterruptedException | URISyntaxException /*| GeneralSecurityException*/ e) {
-                    e.printStackTrace();
-                }
-            }).start();
-        }
-        if (/*requestUserYesOrNo("Move files to archive folder? (Recommended)")*/true) {
-            //Move all of the temp files to a folder for archival purposes.
-            setTitle("Cleaning up");
-            setMaxProgressValue(vm.comments.length);
-            int i = 0;
-            long startTime = System.currentTimeMillis();
-            for (VideoManifestComment vmc : vm.comments) {
-                i++;
-                setProgressValue(i);
-                moveFile(Config.getDownloadsFolder() + "/" + vmc.name, Config.getOutputFolder() + "/Archive/" + vmc.DLid + "/" + vmc.name);
-                moveFile(Config.getDownloadsFolder() + "/rvm_temp_" + vmc.DLid + "_thing_" + vmc.thingId + ".mp4", Config.getOutputFolder() + "/Archive/" + vmc.DLid + "/rvm_temp_" + vmc.DLid + "_thing_" + vmc.thingId + ".mp4");
-                moveFile(Config.getDownloadsFolder() + "/rvm_dl_" + vmc.DLid + "_thing_" + vmc.thingId + ".mp3", Config.getOutputFolder() + "/Archive/" + vmc.DLid + "/rvm_dl_" + vmc.DLid + "_thing_" + vmc.thingId + ".mp3");
-                if (vmc.isTitle) {
-                    moveFile(Config.getDownloadsFolder() + "/rvm_final_" + DLid + "_thumbnail.png", Config.getOutputFolder() + "/Archive/" + DLid + "/rvm_final_" + vmc.DLid + "_thumbnail.png");
-                }
-                calculateRemainingTime(startTime, vm.comments.length, i);
+        //Move all of the temp files to a folder for archival purposes.
+        setTitle("Cleaning up");
+        setMaxProgressValue(vm.comments.length);
+        int i = 0;
+        long startTime = System.currentTimeMillis();
+        for (VideoManifestComment vmc : vm.comments) {
+            i++;
+            setProgressValue(i);
+            moveFile(Config.getDownloadsFolder() + "/" + vmc.name, Config.getOutputFolder() + "/Archive/" + vmc.DLid + "/" + vmc.name);
+            moveFile(Config.getDownloadsFolder() + "/rvm_temp_" + vmc.DLid + "_thing_" + vmc.thingId + ".mp4", Config.getOutputFolder() + "/Archive/" + vmc.DLid + "/rvm_temp_" + vmc.DLid + "_thing_" + vmc.thingId + ".mp4");
+            moveFile(Config.getDownloadsFolder() + "/rvm_dl_" + vmc.DLid + "_thing_" + vmc.thingId + ".mp3", Config.getOutputFolder() + "/Archive/" + vmc.DLid + "/rvm_dl_" + vmc.DLid + "_thing_" + vmc.thingId + ".mp3");
+            if (vmc.isTitle) {
+                moveFile(Config.getDownloadsFolder() + "/rvm_final_" + DLid + "_thumbnail.png", Config.getOutputFolder() + "/Archive/" + DLid + "/rvm_final_" + vmc.DLid + "_thumbnail.png");
             }
-            for (String path : thumbnails) {
-                moveFile(path, Config.getOutputFolder() + "/Archive/" + DLid + "/" + new File(path).getName());
-            }
-            //Move manifest, final pre-cut video, and final post-cut video
-            moveFile(Config.getDownloadsFolder() + "/rvm_manifest_" + DLid + ".json", Config.getOutputFolder() + "/Archive/" + DLid + "/rvm_manifest_" + DLid + ".json");
-            moveFile(Config.getDownloadsFolder() + "/rvm_final_" + DLid + "_precut.mp4", Config.getOutputFolder() + "/Archive/" + DLid + "/rvm_final_" + DLid + "_precut.mp4");
-            moveFile(Config.getDownloadsFolder() + "/rvm_final_" + DLid + "_preoutro.mp4", Config.getOutputFolder() + "/Archive/" + DLid + "/rvm_final_" + DLid + "_preoutro.mp4");
-            moveFile(Config.getDownloadsFolder() + "/rvm_audio_" + DLid + ".mp3", Config.getOutputFolder() + "/Archive/" + DLid + "/rvm_audio_" + DLid + ".mp3");
-            moveFile(Config.getDownloadsFolder() + "/rvm_final_" + DLid + ".mp4", Config.getOutputFolder() + "/Final/" + DLid + ".mp4");
-            setProgressValue(1);
-            setMaxProgressValue(1);
-        } else {
-            out("Moving files skipped. Everything is still in the Downloads folder, which may screw up this program in the future.");
+            calculateRemainingTime(startTime, vm.comments.length, i);
         }
+        for (String path : thumbnails) {
+            moveFile(path, Config.getOutputFolder() + "/Archive/" + DLid + "/" + new File(path).getName());
+        }
+        //Move manifest and other files
+        moveFile(Config.getDownloadsFolder() + "/rvm_manifest_" + DLid + ".json", Config.getOutputFolder() + "/Archive/" + DLid + "/rvm_manifest_" + DLid + ".json");
+        moveFile(Config.getDownloadsFolder() + "/rvm_audio_" + DLid + ".mp3", Config.getOutputFolder() + "/Archive/" + DLid + "/rvm_audio_" + DLid + ".mp3");
+        moveFile(Config.getDownloadsFolder() + "/rvm_final_" + DLid + ".mp4", Config.getOutputFolder() + "/Final/" + DLid + ".mp4");
 
-        setMaxProgressValue(1);
         setProgressValue(1);
+        setMaxProgressValue(1);
         setTitle("Done");
 
         // yay~yay~yay
         // WE'RE DONE!
         // yay~yay~yay
 
-        out("Everything's done!");
+        out("Done! Check YouTube for the completed video.");
     }
 
     private static String convertToTimestamp(double timestamp) {
@@ -936,13 +825,13 @@ public class Main {
             minutes++;
         }
         String seconds = ((int) timestamp) + "";
-        //Pad the seconds with a zero if seconds < 10
+        //Pad the seconds with a zero if needed
         if (seconds.length() == 1) seconds = "0" + seconds;
         return minutes + ":" + seconds;
     }
 
     /**
-     * Log output to System.out and the text area in the GUI.
+     * Log output to System.out and add to a StringBuilder for the log.
      *
      * @param str The String to output
      */
@@ -951,12 +840,11 @@ public class Main {
         DateFormat dateFormat = new SimpleDateFormat("HH:mm:SS");
         String date = dateFormat.format(d);
         System.out.println(str);
-        //if (getGUI() != null) gui.logArea.append(date + " [out] " + str + "\n");
         log.append(date).append(" [out] ").append(str).append("\n");
     }
 
     /**
-     * Log output to System.err and the text area in the GUI.
+     * Log output to System.err and add to a StringBuilder for the log.
      *
      * @param str The String to output
      */

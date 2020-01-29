@@ -219,6 +219,9 @@ public class Server {
 
             String response = Main.getStatus();
 
+            Headers headers = httpExchange.getResponseHeaders();
+            //Set the charset so the emojis and special characters display correctly.
+            headers.add("Content-Type", "text/html; charset=ISO-8859-1");
             httpExchange.sendResponseHeaders(200, response.getBytes().length);
             OutputStream os = httpExchange.getResponseBody();
             os.write(response.getBytes());
