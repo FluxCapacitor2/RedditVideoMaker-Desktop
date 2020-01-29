@@ -17,9 +17,23 @@ public class Server {
     static VideoManifest manifest = new VideoManifest();
 
     public static void main(String[] args) throws IOException {
+        main(8080);
+    }
+
+    public static void main(int port) throws IOException {
         System.out.println("Starting...");
-        short port = 8080;
-        HttpServer server = HttpServer.create(new InetSocketAddress(port), 100);
+        HttpServer server;
+        try {
+            server = HttpServer.create(new InetSocketAddress(port), 100);
+        } catch (BindException e) {
+            if (port + 1 >= 65535) {
+                //Overflow the port number if it's over the 16-bit int limit
+                port = 1;
+            }
+            Main.err("Error binding to port " + port + ". Trying to start server on port " + (port + 1) + "...");
+            main(port + 1);
+            return;
+        }
         //server.createContext("/reddit", new SubredditHandler());
         //server.createContext("/r/", new SubredditHandler());
         //server.createContext("/api/morechildren", new RedditApiMoreChildrenHandler());
@@ -140,21 +154,17 @@ public class Server {
                     "            } else {\n" +
                     "                document.getElementById('working').style.display = 'block';\n" +
                     "                document.getElementById('done').style.display = 'none';\n" +
-                    "            }\n" +
-                    "\n" +
-                    "            setTimeout(function () {\n" +
-                    "    " +
-                    "            x.open('GET', '/renderstatus.json', true);\n" +
-                    "                x.send();\n" +
-                    "            }, 500);\n" +
-                    "        } else if (this.status != 200 && this.status != 0 && this.readyState == 4) {\n" +
-                    "            console.log(\"XHR Finished Loading: readyState=\", this.readyState, \", status=\", this.status, \".\");\n" +
-                    "            //The process is probably done!\n" +
+                    "            }" +
                     "\n" +
                     "        }\n" +
-                    "    };\n" +
+                    "        setTimeout(function () {\n" +
+                    "            x.open('GET', '/renderstatus.json', true);\n" +
+                    "            x.send();\n" +
+                    "        }, 100);\n" +
+                    "    }\n" +
                     "    x.open('GET', '/renderstatus.json', true);\n" +
-                    "    x.send();\n" +
+                    "\n" +
+                    "    x.send();" +
                     "</script>\n" +
                     "</html>";
             httpExchange.sendResponseHeaders(200, captureStatusResponse.getBytes().length);
