@@ -139,6 +139,7 @@ public class Server {
                     "            } else {\n" +
                     "                document.getElementById('working').style.display = 'block';\n" +
                     "                document.getElementById('done').style.display = 'none';\n" +
+                    "                window.location.href = '/" + Capture.getSubreddit() + "';\n" +
                     "            }\n" +
                     "\n" +
                     "            setTimeout(function () {\n" +
