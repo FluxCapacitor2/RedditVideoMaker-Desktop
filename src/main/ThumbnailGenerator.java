@@ -14,12 +14,14 @@ public class ThumbnailGenerator {
     private static final int WIDTH = 1920;
     private static final int HEIGHT = 1080;
 
-    static int horizontalMargin = 40;
-    private static int lineHeight = fontSize + 10;
-    static int topMargin = 375;
     private static int fontSize = 140;
+    private static int lineHeight;
+    static int horizontalMargin = 40;
+    static int topMargin = 375;
 
     static String generateThumbnail(String DLid, String t, String subreddit) throws IOException {
+
+        lineHeight = fontSize + 10;
 
         String thumbnailPath = Config.getDownloadsFolder() + "/rvm_final_" + DLid + "_thumbnail.png";
         File outputFile = new File(thumbnailPath);
