@@ -276,6 +276,10 @@ public class Capture {
     }
 
     public static String getSubreddit() {
-        return Server.manifest.subreddits[0];
+        try {
+            return Server.manifest.subreddits[0];
+        } catch (NullPointerException e) {
+            return "status";
+        }
     }
 }
