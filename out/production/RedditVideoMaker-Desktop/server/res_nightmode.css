@@ -1,0 +1,105 @@
+/*
+Dark Mode CSS
+ */
+/* Quick fix: Make everything larger for easier clicking on mobile. */
+button {
+    border-radius: 3px;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.fw-on-mobile {
+    display: inline;
+}
+
+@media only screen and (max-width: 1025px) {
+    body.no-hide-buttons .fw-on-mobile {
+        display: block;
+    }
+
+    body.no-hide-buttons .md p, body.no-hide-buttons label {
+        font-size: 24pt !important;
+    }
+
+    body.no-hide-buttons input#tText {
+        width: 100% !important;
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        font-size: 20pt;
+    }
+
+    body.no-hide-buttons p.tagline {
+        font-size: 15px !important;
+    }
+
+    body.no-hide-buttons button {
+        padding: 12px;
+        margin: 4px;
+        font-size: 30pt !important;
+    }
+}
+
+.commentssignupbar, #header-bottom-right {
+    display: none !important;
+}
+/* Overall */
+.nightmode, .nightmode * {
+    color: #ccc !important;
+    background-color: #262626 !important;
+}
+
+.nightmode p.tagline a.author, .nightmode p.tagline a.expand {
+    color: rgb(106, 152, 175) !important;
+}
+
+section.listingsignupbar.infobar {
+    display: none !important;
+}
+
+#header-img, #header-img-a, #mouseposition-extension-element-full-container, ul.tabmenu, .comment > .entry {
+    background-color: transparent !important;
+}
+
+.sitetable.listing, .usertext-body, .usertext, .noncollapsed.morechildren, p.tagline, p.tagline *, div.entry, .comment > .midcol {
+    background-color: transparent !important;
+}
+
+.flat-list.buttons, .flat-list.buttons *, .md, .md *, .morechildren > .entry, .morechildren > .entry * {
+    background-color: transparent !important;
+}
+
+.sitetable.nestedlisting, .comment .midcol, .comment .midcol *, .comment, .comment .child {
+    background-color: transparent !important;
+}
+
+/* Comment Threads (inspired by Reddit Enhancement Suite) */
+/* Odd numbers */
+.nightmode .comment, .nightmode .comment .comment .comment {
+    background-color: rgb(22, 22, 22) !important;
+}
+
+/* Even numbers */
+.nightmode .comment .comment, .nightmode .comment .comment .comment .comment {
+    background-color: rgb(18, 18, 18) !important;
+}
+
+/* Rounded comments */
+.comment {
+    border-radius: 3px;
+}
+
+.nightmode .comment {
+    border-color: rgb(51, 51, 51) !important;
+    margin: 0 8px 8px 10px !important;
+    border-width: 1px !important;
+    border-style: solid !important;
+    padding: 5px 8px 5px 5px !important;
+}
+
+/* Remove an ugly border */
+.comment .child, .comment .showreplies {
+    border-left: none !important;
+}
+
+/* Loading more comments isn't supported by the server, so why show it to the client? */
+.morecomments {
+    display: none !important;
+}
