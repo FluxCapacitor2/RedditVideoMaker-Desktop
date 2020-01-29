@@ -966,7 +966,7 @@ public class Main {
         maxProgressValue = value;
     }
 
-    private static void setTitle(String title) {
+    public static void setTitle(String title) {
         Main.progressTitle = title;
     }
 }

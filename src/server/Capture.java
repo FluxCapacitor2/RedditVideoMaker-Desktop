@@ -272,6 +272,8 @@ public class Capture {
             } catch (ClassNotFoundException | UnsupportedLookAndFeelException | IllegalAccessException | InstantiationException e) {
                 e.printStackTrace();
             }
+        } else {
+            Main.setTitle("Done");
         }
     }
 
