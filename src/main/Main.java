@@ -266,11 +266,6 @@ public class Main {
         return minutes + "m " + tempSeconds + "s";
     }
 
-    @NotNull
-    static String requestUserInput(String label) {
-        return JOptionPane.showInputDialog(null, label);
-    }
-
     /**
      * Exit using System.exit after saving
      * the current log to a file.
