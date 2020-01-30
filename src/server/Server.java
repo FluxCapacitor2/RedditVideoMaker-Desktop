@@ -167,6 +167,8 @@ public class Server {
                     "    x.send();" +
                     "</script>\n" +
                     "</html>";
+            Headers headers = httpExchange.getResponseHeaders();
+            headers.add("Content-Type", "text/html; charset=ISO-8859-1");
             httpExchange.sendResponseHeaders(200, captureStatusResponse.getBytes().length);
             os.write(captureStatusResponse.getBytes());
             os.close();
