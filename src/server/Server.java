@@ -150,7 +150,7 @@ public class Server {
                     "if (json.progress.global.title == 'Done') {\n" +
                     "                document.getElementById('working').style.display = 'none';\n" +
                     "                document.getElementById('done').style.display = 'block';\n" +
-                    "                window.location.href = '/" + Capture.getSubreddit() + "';\n" +
+                    "                " + (Capture.getSubreddit() != null ? "window.location.href='/" + Capture.getSubreddit() + "';\n" : "\n") +
                     "            } else {\n" +
                     "                document.getElementById('working').style.display = 'block';\n" +
                     "                document.getElementById('done').style.display = 'none';\n" +

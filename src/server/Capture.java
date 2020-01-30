@@ -281,7 +281,7 @@ public class Capture {
         try {
             return Server.manifest.subreddits[0];
         } catch (NullPointerException e) {
-            return "status";
+            return null;
         }
     }
 }
