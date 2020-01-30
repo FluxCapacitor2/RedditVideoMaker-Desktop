@@ -758,10 +758,10 @@ public class Main {
             if (ids.size() == 0) return null;
             if (ids.size() == 1) return ids.get(0);
 
-            int resp = JOptionPane.showOptionDialog(null,
-                    "Choose a Download ID to use: ",
-                    "Select an option", JOptionPane.DEFAULT_OPTION, JOptionPane.PLAIN_MESSAGE,
-                    null, ids.toArray(new String[]{}), ids.get(0));
+            //Use the most recent download ID to render.
+            Collections.sort(ids);
+            int resp = ids.size() - 1;
+
             if (ids.get(resp) == null) {
                 exit(65);
             }
