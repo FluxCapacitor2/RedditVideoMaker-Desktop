@@ -4,28 +4,27 @@ import javax.swing.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Arrays;
 
 public class Options {
     JPanel frame;
-    JButton saveAndStartBtn;
-    JCheckBox alwaysOnTop;
     JComboBox<String> bg;
-    JButton closeBtn;
+    JButton saveBtn;
     JTextField dlFolder;
     JTextField libFolder;
     JTextField outFolder;
-    JButton editManifestBtn;
 
     private ArrayList<File> backgrounds;
 
     Options() {
+        JFrame jframe = new JFrame();
+        jframe.setContentPane(frame);
+        jframe.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        jframe.setSize(500, 250);
+        jframe.setVisible(true);
 
-        saveAndStartBtn.addActionListener(e -> save());
-        closeBtn.addActionListener(e -> close());
-        editManifestBtn.addActionListener(e -> edit());
+        saveBtn.addActionListener(e -> save());
 
         File dir = new File(Config.getLibraryFolder() + "/backgrounds/");
         if (dir.listFiles() != null) {
@@ -57,8 +56,6 @@ public class Options {
         dlFolder.setText(Config.getDownloadsFolder());
         libFolder.setText(Config.getLibraryFolder());
         outFolder.setText(Config.getOutputFolder());
-        //ALWAYS ON TOP
-        alwaysOnTop.setSelected(Config.getAlwaysOnTop());
 
         JFileChooser fc = new JFileChooser();
         fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
@@ -111,13 +108,8 @@ public class Options {
         });
     }
 
-    private void edit() {
-        //Main.configFrame.setVisible(false);
-        try {
-            new EditManifest(Main.getManifest(Main.getDLid()).comments);
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
+    public static void main(String[] args) {
+        new Options();
     }
 
     private void save() {
@@ -137,18 +129,8 @@ public class Options {
         } else {
             Config.setBackground(backgrounds.get(index).getAbsolutePath());
         }
-        /*
-        Always On Top
-         */
-        Config.setAlwaysOnTop(alwaysOnTop.isSelected());
         //Done saving settings!
         Main.out("Settings saved.");
-        //Now start RVM.
-        close();
-        Main.onAfterOptionsMenuClosed();
-    }
-
-    void close() {
-        //Main.configFrame.setVisible(false);
+        JOptionPane.showMessageDialog(null, "Settings saved.");
     }
 }
