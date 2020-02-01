@@ -17,14 +17,6 @@ public class Config {
         return Main.randomizeFilesInFolder(getLibraryFolder() + "/backgrounds/").get(0).getAbsolutePath();
     }
 
-    static boolean getAlwaysOnTop() {
-        return prefs.getBoolean("isAlwaysonTop", false);
-    }
-
-    static void setAlwaysOnTop(boolean isAlwaysOnTop) {
-        prefs.putBoolean("isAlwaysOnTop", isAlwaysOnTop);
-    }
-
     public static String getDownloadsFolder() {
         return prefs.get("downloadsFolder", "D:/Downloads");
     }
