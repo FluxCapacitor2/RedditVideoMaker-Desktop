@@ -9,4 +9,5 @@ public class VideoManifestComment {
     public boolean isTitle;
     public String subreddit;
     public int indexInPost;
+    public boolean isParent;
 }

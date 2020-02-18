@@ -22,6 +22,8 @@ public class RedditParser {
 
     public static String main(String url, boolean hideButtons) throws IOException {
 
+        boolean autoCapture = url.contains("autoCapture");
+
         if (subreddits == null) {
             subreddits = new Gson().fromJson(new InputStreamReader(new FileInputStream(new File(Config.getLibraryFolder(), "subreddits.json"))), HashMap.class);
         }
@@ -36,7 +38,7 @@ public class RedditParser {
             return "<h1>Couldn't reach Reddit</h1><script>window.location.reload();</script>";
         }
         System.out.println("Done! Adding RVM components...");
-        //Create "Add" and "Remove" buttons (VERY similar to the Chrome extension, this is on purpose)
+        //Create "Add" and "Remove" buttons
         Elements els = doc.select(".usertext-body");
 
         String postTitle = doc.select("a.title").text();
@@ -47,7 +49,10 @@ public class RedditParser {
         doc.select("body").addClass("nightmode");
         doc.select("p.parent").remove();
         doc.select("div#sr-header-area").remove();
-        //doc.selectFirst("link[title=applied_subreddit_stylesheet]").remove();
+        try {
+            doc.selectFirst("link[title=applied_subreddit_stylesheet]").remove();
+        } catch (Exception ignored) {
+        }
 
         if (url.contains("/comments/")) {
             if (!hideButtons) {
@@ -70,8 +75,35 @@ public class RedditParser {
                                     "    post in the YouTube video title.</label><br class='show-on-mobile'></div>\n" +
                                     "</form>\n" +
                                     "<button id='sendBtn'>Send</button>");
+        } else {
+            //If there is no comments on the page, then this is a list of posts.
+            for (Element topMatter : doc.select("div.top-matter")) {
+                if (topMatter.select("span.domain").text().contains("AskReddit")) {
+                    //If it's a post on r/AskReddit, offer an instant capture button
+                    String href = topMatter.selectFirst("a.title").attr("href");
+                    topMatter.prepend("<a href='" + href + "?capture=true&autoCapture=true&hideButtons=true&limit=500' target='_blank'><button>Instant Capture</button></a>");
+                }
+            }
         }
         doc.append("<script type='text/javascript'>document.getElementById('tText').value = decodeURIComponent(\"" + URLEncoder.encode(postTitle, "UTF-8") + "\").replace(/\\+/g, ' ');</script>");
+
+        if (autoCapture && hideButtons) {
+            //If the link specified to auto capture, hide all second-level child comments when we're capturing.
+            doc.select(".child .child").remove();
+            //Also remove all comments after the second child comment of every top-level comment
+            for (Element parent : doc.select(".thing.comment")) {
+                if (parent.select(".child").size() != 0) {
+                    int i = 0;
+                    for (Element child : parent.select(".child>div>.thing")) {
+                        if (i >= 1) {
+                            System.out.println("Removing #" + i + " child comment.");
+                            child.remove();
+                        }
+                        i++;
+                    }
+                }
+            }
+        }
 
         for (Object key : subreddits.keySet()) {
             doc.select("#header").prepend("<button><a href='/" + key + "'>" + key + "</a></button>");

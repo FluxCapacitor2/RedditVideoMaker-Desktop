@@ -10,6 +10,7 @@ import com.google.api.services.youtube.model.VideoSnippet;
 import com.google.api.services.youtube.model.VideoStatus;
 
 import javax.swing.*;
+import java.awt.*;
 import java.io.*;
 import java.security.GeneralSecurityException;
 import java.util.List;
@@ -26,6 +27,13 @@ class UploadVideo {
      * execute API request. Print API response.
      */
     static void main(String filePath, String videoTitle, String videoDescription, List<String> videoTags) throws FileNotFoundException, IllegalAccessException, NoSuchFieldException {
+        System.out.println("Video would've been uploaded from " + filePath + " but we stopped it to save API quota usage! :D");
+        try {
+            Desktop.getDesktop().open(new File(filePath));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        System.exit(69420);
         UploadVideo.filePath = filePath;
         UploadVideo.videoTitle = videoTitle;
         UploadVideo.videoDescription = videoDescription;

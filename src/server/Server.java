@@ -14,17 +14,21 @@ import java.util.Map;
 
 public class Server {
 
+    //public static final String CONTENT_TYPE = "text/html; charset=ISO-8859-1"; //This one works when the JAR is compiled...
+    public static final String CONTENT_TYPE = "text/html; charset=UTF-8"; //and this one works in IntelliJ IDEA...
     static VideoManifest manifest = new VideoManifest();
+    public static int port;
 
     public static void main(String[] args) throws IOException {
         main(8080);
     }
 
     public static void main(int port) throws IOException {
+        Server.port = port;
         System.out.println("Starting...");
         HttpServer server;
         try {
-            server = HttpServer.create(new InetSocketAddress(port), 100);
+            server = HttpServer.create(new InetSocketAddress(port), 10000);
         } catch (BindException e) {
             if (port + 1 >= 65535) {
                 //Overflow the port number if it's over the 16-bit int limit
@@ -65,10 +69,7 @@ public class Server {
                 if (!url.contains("/renderstatus.json"))
                     System.out.println(httpExchange.getRequestMethod() + " " + url);
                 //System.out.println("[GeneralHandler] finding destination for url: " + url);
-                if (url.contains("/r/") || url.contains("/u/") || url.contains("reddit.com")) {
-                    //System.out.println("[GeneralHandler] delegating handling to SubredditHandler");
-                    new SubredditHandler().handle(httpExchange);
-                } else if (url.equals("/")) {
+                if (url.contains("/r/") || url.contains("/u/") || url.contains("reddit.com") || url.equals("/")) {
                     //System.out.println("[GeneralHandler] delegating handling to SubredditHandler");
                     new SubredditHandler().handle(httpExchange);
                 } else if (url.contains("/res_nightmode.css")) {
@@ -97,7 +98,10 @@ public class Server {
                     os.close();
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                if (e.getMessage() != null && !e.getMessage().isEmpty() &&
+                        !e.getMessage().contains("An established connection was aborted by the software in your host machine")) {
+                    e.printStackTrace();
+                }
                 httpExchange.sendResponseHeaders(500, 0);
                 OutputStream os = httpExchange.getResponseBody();
                 os.close();
@@ -160,7 +164,7 @@ public class Server {
                     "        setTimeout(function () {\n" +
                     "            x.open('GET', '/renderstatus.json', true);\n" +
                     "            x.send();\n" +
-                    "        }, 100);\n" +
+                    "        }, 250);\n" +
                     "    }\n" +
                     "    x.open('GET', '/renderstatus.json', true);\n" +
                     "\n" +
@@ -168,7 +172,7 @@ public class Server {
                     "</script>\n" +
                     "</html>";
             Headers headers = httpExchange.getResponseHeaders();
-            headers.add("Content-Type", "text/html; charset=ISO-8859-1");
+            headers.add("Content-Type", CONTENT_TYPE);
             httpExchange.sendResponseHeaders(200, captureStatusResponse.getBytes().length);
             os.write(captureStatusResponse.getBytes());
             os.close();
@@ -195,18 +199,22 @@ public class Server {
                     os.write(response.getBytes());
                     os.close();
                     System.out.println("Capturing page...");
-                    String[] selection = query.get("selection").split(",");
 
-                    String url = "http://localhost:8080" + t.getRequestURI().getPath() + "?limit=500&hideButtons=true";
+                    String url = t.getRequestURI().getPath() + "?limit=500&hideButtons=true";
                     //Execute this in a new thread so we can respond to the request.
-                    Capture.main(url, selection, query);
+                    if (query.containsKey("autoCapture")) {
+                        Capture.autoCapture(url, query);
+                    } else {
+                        String[] selection = query.get("selection").split(",");
+                        Capture.main("http://localhost:8080" + url, selection, query);
+                    }
                 } else {
                     System.out.println("RedditHandler called normally. Opening Reddit...");
                     //Go to Reddit & create "add" buttons, etc.
                     String response = RedditParser.main(t.getRequestURI().toString(), (query != null && query.containsKey("hideButtons")));
                     Headers headers = t.getResponseHeaders();
                     //headers.add("Content-Type", "text/html; charset=UTF-8");
-                    headers.add("Content-Type", "text/html; charset=ISO-8859-1");
+                    headers.add("Content-Type", CONTENT_TYPE);
                     t.sendResponseHeaders(200, response.getBytes().length);
                     OutputStream os = t.getResponseBody();
                     try {
@@ -234,7 +242,7 @@ public class Server {
 
             Headers headers = httpExchange.getResponseHeaders();
             //Set the charset so the emojis and special characters display correctly.
-            headers.add("Content-Type", "text/html; charset=ISO-8859-1");
+            headers.add("Content-Type", CONTENT_TYPE);
             httpExchange.sendResponseHeaders(200, response.getBytes().length);
             OutputStream os = httpExchange.getResponseBody();
             os.write(response.getBytes());

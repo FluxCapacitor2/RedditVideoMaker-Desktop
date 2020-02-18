@@ -5,6 +5,9 @@ import main.Config;
 import main.Main;
 import main.VideoManifest;
 import main.VideoManifestComment;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -48,12 +51,32 @@ public class Capture {
         return startTime;
     }
 
+    public static void autoCapture(String url, Map<String, String> query) throws IOException {
+        url += "&autoCapture=true";
+        Main.out("[Capture] AutoCapture called for \"" + url + "\".");
+        Document d = Jsoup.parse(RedditParser.main(url, true));
+        ArrayList<String> comments = new ArrayList<>();
+        for (Element e : d.select(".thing")) {
+            String thingId = e.attr("data-fullname");
+            if (thingId.length() == 10) {
+                comments.add(thingId);
+            }
+        }
+        //Set values that are expected by SelectiveCapture
+        query.put("postType", "firstandlast");
+        query.put("thumbnailText", d.selectFirst("a.title").text());
+        query.put("isFeatured", "true");
+        Main.out("Sending auto-gathered selection of " + comments.size() + " comments to SelectiveCapture.");
+        main("localhost:" + Server.port + url, comments.toArray(new String[]{}), query);
+    }
+
     public static void main(String url, String[] ids, Map<String, String> query) throws IOException {
+        Main.out("[Capture] Selective capture called for \"" + url + "\".");
 
         isCapturing = true;
         Main.out("[Capture] Starting...");
 
-        String selectionType = query.get("postType"); //"first", "none", or "last".
+        String selectionType = query.get("postType"); //"first", "none", "last", or "firstandlast".
         String uid;
         boolean isLast = false;
 
@@ -108,12 +131,12 @@ public class Capture {
 
         System.setProperty("webdriver.chrome.driver", CHROME_DRIVER);
         ChromeOptions options = new ChromeOptions();
-        options.setHeadless(true);
+        options.setHeadless(false);
         options.setProxy(null);
         WebDriver driver = new ChromeDriver(options);
         Main.out("[Capture] Driver started");
         driver.get(url);
-        Main.out("[Capture] URL Loaded");
+        Main.out("[Capture] URL Loaded: " + url);
 
         if (Server.manifest.URLs == null) Server.manifest.URLs = new String[]{};
         if (Server.manifest.titles == null) Server.manifest.titles = new String[]{};
@@ -121,6 +144,8 @@ public class Capture {
         if (Server.manifest.comments == null) Server.manifest.comments = new VideoManifestComment[]{};
         if (Server.manifest.thumbnailTexts == null) Server.manifest.thumbnailTexts = new String[]{};
         if (Server.manifest.isFeatured == null) Server.manifest.isFeatured = new Boolean[]{};
+
+        System.out.println(driver.getPageSource());
 
         String sr = "/r/" + driver.findElement(By.cssSelector("span.redditname>a")).getText() + "/";
         Server.manifest.URLs = append(Server.manifest.URLs, driver.findElement(By.cssSelector("link[rel=shorturl]")).getAttribute("href"));
@@ -232,11 +257,28 @@ public class Capture {
                     ImageIO.write(bufferedImage, "png", screenshotLocation);
 
                     c.name = screenshotLocation.getName();
-                    if (i == 0) c.isTitle = true;
+                    c.isTitle = i == 0;
                     c.thingId = thingId + "_" + j + "_para" + (i == 0 ? "_title" : "");
                     c.DLid = uid;
                     c.subreddit = sr;
                     c.indexInPost = i;
+                    System.out.println("CSS Value for background-color for `p` is: " + p.getCssValue("background-color"));
+                    System.out.println("Comment text: " + c.text);
+                    System.out.println("---------------");
+                    //We're going to check if it is a parent comment by its CSS `orphans` value
+                    // (doesn't change how anything looks in this case, but for child comments I set it to '10')
+                    boolean isParentComment = !p.getCssValue("orphans").equals("10");
+                    System.out.println("css value: " + p.getCssValue("orphans"));
+                    System.out.println("based on css value above, the comment that says \"" + c.text + "\" is" + (isParentComment ? " not" : "") + " a child comment.");
+                    c.isParent = (
+                            //Is a parent comment (is not surrounded by anything that matches ".child" css selector)
+                            isParentComment
+                                    //Is the first paragraph in the comment
+                                    && j == 0
+                                    //Isn't the first comment in the vid (the title)
+                                    && i != 0);
+                    System.out.println("j = " + j);
+                    System.out.println("i = " + i);
 
                     comments.add(c);
                     j++;

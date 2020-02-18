@@ -455,6 +455,10 @@ public class Main {
                 long individualStartTime = System.currentTimeMillis();
                 String out = "rvm_temp_" + comment.DLid + "_thing_" + comment.thingId + ".mp4";
                 File outFile = new File(Config.getDownloadsFolder() + "/" + out);
+                if (comment.isParent) {
+                    //Place static before every parent comment to give the output video more structure
+                    outputFiles.add("/_rvm/static.mp4");
+                }
                 outputFiles.add(out);
                 if (!outFile.exists()) {
                     setProgressValue(i);
@@ -520,6 +524,7 @@ public class Main {
                             .addArguments("-c:v", "h264_nvenc")
                             .addArguments("-preset", "slow")
                             .addArguments("-profile:v", "high")
+                            .addArguments("-b:v", "8M")
                             .addArgument("-shortest")
                             .addArguments("-map", "[finalVideo]")
                             .addArguments("-map", "0:a")
@@ -931,9 +936,15 @@ public class Main {
             //Calculate the remaining time
             long elapsedTime = System.currentTimeMillis() - Capture.getStartTime();
             if (prog == 0) prog = 0.01;
-            long totalTime = (100 * (elapsedTime / (int) (prog * 100)));
-            long remainingTime = totalTime - elapsedTime;
-            tr = convertToTimeString((int) remainingTime / 1000);
+            try {
+                long totalTime = (100 * (elapsedTime / (int) (prog * 100)));
+                long remainingTime = totalTime - elapsedTime;
+                tr = convertToTimeString((int) remainingTime / 1000);
+            } catch (ArithmeticException e) {
+                long totalTime = 0;
+                long remainingTime = 0;
+                tr = "-";
+            }
         } else {
             title = progressTitle;
             prog = (double) progressValue / (double) maxProgressValue;
