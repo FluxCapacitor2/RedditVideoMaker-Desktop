@@ -69,8 +69,8 @@ class ApiUtils {
                 HTTP_TRANSPORT, JSON_FACTORY, clientSecrets, scopes).setCredentialDataStore(datastore)
                 .build();
 
-        // Build the local server and bind it to port 8080
-        LocalServerReceiver localReceiver = new LocalServerReceiver.Builder().setPort(8080).build();
+        // Build the local server and bind it to port 8079 (8080+ is taken by the RVM server)
+        LocalServerReceiver localReceiver = new LocalServerReceiver.Builder().setPort(8079).build();
 
         // Authorize.
         return new AuthorizationCodeInstalledApp(flow, localReceiver).authorize("user");
