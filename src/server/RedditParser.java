@@ -33,7 +33,7 @@ public class RedditParser {
         try {
             doc = Jsoup.connect(redditUrl).get();
         } catch (UnknownHostException e) {
-            return "<h1>Couldn't reach Reddit</h1>";
+            return "<h1>Couldn't reach Reddit</h1><script>window.location.reload();</script>";
         }
         System.out.println("Done! Adding RVM components...");
         //Create "Add" and "Remove" buttons (VERY similar to the Chrome extension, this is on purpose)
