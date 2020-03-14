@@ -1,6 +1,10 @@
 var selection = [];
 var toEval = '';
-document.querySelector('link[title="applied_subreddit_stylesheet"]').remove();
+try {
+    document.querySelector('link[title="applied_subreddit_stylesheet"]').remove();
+} catch (err) {
+    console.info("Did not remove subreddit stylesheet because it was not found.");
+}
 window.onload = function () {
     //document.querySelector('link[title="applied_subreddit_stylesheet"]').remove();
     for (let item of document.getElementsByClassName('addComment')) {

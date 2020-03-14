@@ -587,44 +587,53 @@ public class Main {
             ffmpeg2
                     .setComplexFilter(FilterGraph.of(
                             FilterChain.of(
+                                    //Concat all the videos together
                                     concatFilter
                                             .addArgument("n", String.valueOf(outputFiles.size()))
                                             .addArgument("v", "1")
                                             .addArgument("a", "1")
                                             .addOutputLink("outv")
                                             .addOutputLink("outa"),
+                                    //Format all of the audio streams to the same so we can concat them
                                     Filter.withName("aformat")
                                             .addInputLink("outa")
                                             .addArgument("sample_fmts", "fltp")
                                             .addArgument("sample_rates", "22050")
                                             .addArgument("channel_layouts", "stereo")
                                             .addOutputLink("a1"),
+                                    //Format all of the audio streams to the same so we can concat them
                                     Filter.withName("aformat")
                                             .addInputLink(outputFiles.size() + ":0")
                                             .addArgument("sample_fmts", "fltp")
                                             .addArgument("sample_rates", "22050")
                                             .addArgument("channel_layouts", "stereo")
                                             .addOutputLink("a2"),
+                                    //Adjust the music volume
                                     Filter.withName("volume")
                                             .addInputLink("a2")
-                                            .addArgument("volume", "-20.0dB")
+                                            .addArgument("volume", "-10.0dB")
                                             .addOutputLink("a2adj"),
+                                    //Adjust the TTS volume
                                     Filter.withName("volume")
                                             .addInputLink("a1")
-                                            .addArgument("volume", "5.0dB")
+                                            .addArgument("volume", "4.0dB")
                                             .addOutputLink("a1adj"),
+                                    //Merge the TTS (in each individual video) with the music track
                                     Filter.withName("amerge")
                                             .addInputLink("a1adj")
                                             .addInputLink("a2adj")
                                             .addArgument("inputs", "2")
                                             .addOutputLink("apresync"),
+                                    //Remove duplicate frames in audio
                                     Filter.withName("aresample")
                                             .addInputLink("apresync")
                                             .addArgument("async", "1000")
                                             .addOutputLink("afinal"),
+                                    //Remove duplicate frames in video
                                     Filter.withName("mpdecimate")
                                             .addInputLink("outv")
                                             .addOutputLink("vfinal"),
+                                    //Concat the final audio/video and the outro
                                     Filter.withName("concat")
                                             .addInputLink("vfinal")
                                             .addInputLink("afinal")
@@ -635,21 +644,28 @@ public class Main {
                                             .addArgument("v", "1")
                                             .addOutputLink("v")
                                             .addOutputLink("a"),
+                                    //Remove duplicate frames from the new video (video+outro)
                                     Filter.withName("mpdecimate")
                                             .addInputLink("v")
                                             .addOutputLink("v2")
                             )
                     ))
                     .addOutput(UrlOutput.toPath(new File(Config.getDownloadsFolder() + "/rvm_final_" + DLid + ".mp4").toPath()))
+                    //Set these streams to be used in the final video
                     .addArguments("-map", "[v2]")
                     .addArguments("-map", "[a]")
+                    //Set frame rate
                     .addArguments("-r", "30")
+                    //Set the video codec
                     .addArguments("-c:v", "h264_nvenc")
                     .addArguments("-preset", "slow")
                     .addArguments("-profile:v", "high")
+                    //Set the audio codec
                     .addArguments("-c:a", "aac")
+                    //Set overwrite output and log level settings
                     .setOverwriteOutput(true)
                     .setLogLevel(LogLevel.INFO)
+                    //Set render progress as it's reported
                     .setProgressListener(p -> {
                         if (p.getTimeMillis() != null) {
                             setMaxProgressValue((int) finalLength + 20);
@@ -660,6 +676,7 @@ public class Main {
                 if (REPORT_FFMPEG_OUTPUT) out("[FFmpeg CLI] > " + o);
                 return false;
             })
+                    //Start the render
                     .execute();
 
             String finalPath = Config.getDownloadsFolder() + "/rvm_final_" + DLid + ".mp4";

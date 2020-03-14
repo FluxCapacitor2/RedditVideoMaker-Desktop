@@ -7,14 +7,10 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.Inet4Address;
-import java.net.URLEncoder;
-import java.net.UnknownHostException;
+import java.io.*;
+import java.net.*;
 import java.util.HashMap;
+import java.util.Scanner;
 
 public class RedditParser {
 
@@ -30,14 +26,23 @@ public class RedditParser {
 
         //Open Reddit and parse its HTML
         String redditUrl = "https://old.reddit.com/" + url;
-        System.out.println("Waiting for " + redditUrl);
+        //System.out.println("Waiting for " + redditUrl);
         Document doc;
         try {
-            doc = Jsoup.connect(redditUrl).get();
+            System.out.println("RedditParser: Requesting \"" + redditUrl + "\"");
+            URL reddit = new URL(redditUrl);
+            URLConnection con = reddit.openConnection();
+            con.setRequestProperty("User-Agent", RandomUserAgent.getRandomUserAgent());
+            InputStream response = con.getInputStream();
+            Scanner scanner = new Scanner(response);
+            String html = scanner.useDelimiter("\\A").next();
+            doc = Jsoup.parse(html);
+            System.out.println("RedditParser: Reddit was loaded");
         } catch (UnknownHostException e) {
+            System.out.println("RedditParser: UnknownHostException");
             return "<h1>Couldn't reach Reddit</h1><script>window.location.reload();</script>";
         }
-        System.out.println("Done! Adding RVM components...");
+        //System.out.println("Done! Adding RVM components...");
         //Create "Add" and "Remove" buttons
         Elements els = doc.select(".usertext-body");
 
@@ -51,6 +56,10 @@ public class RedditParser {
         doc.select("div#sr-header-area").remove();
         try {
             doc.selectFirst("link[title=applied_subreddit_stylesheet]").remove();
+        } catch (Exception ignored) {
+        }
+        try {
+            doc.select(".awardings-bar").remove();
         } catch (Exception ignored) {
         }
 
@@ -95,8 +104,12 @@ public class RedditParser {
                 if (parent.select(".child").size() != 0) {
                     int i = 0;
                     for (Element child : parent.select(".child>div>.thing")) {
-                        if (i >= 1) {
-                            System.out.println("Removing #" + i + " child comment.");
+                        if (
+                                i >= 1 ||
+                                        child.text().trim().contains("?") ||
+                                        child.select(".tagline").text().contains("AutoModerator") ||
+                                        child.select(".tagline").text().contains("Bot")
+                        ) {
                             child.remove();
                         }
                         i++;
@@ -109,24 +122,21 @@ public class RedditParser {
             doc.select("#header").prepend("<button><a href='/" + key + "'>" + key + "</a></button>");
         }
 
-        System.out.println("Finished removing the sidebar, subreddit stylesheet, and adding the send button.");
+        //System.out.println("Finished removing the sidebar, subreddit stylesheet, and adding the send button.");
 
         if (!hideButtons) {
             doc.body().addClass("no-hide-buttons");
             for (Element e : els) {
                 String thingId = e.siblingElements().select("input[name=thing_id]").val();
-                //System.out.println("[comment found] " + e.html());
                 e.prepend("<button class='btn addComment' id='rvm_add_" + thingId + "'>Add</button>" +
                         "<button class='btn removeComment' id='rvm_rem_" + thingId + "' style='display:none;'>Remove</button>");
-                //e.attr("contenteditable", true);
             }
-            System.out.println("Finished creating 'add' and 'remove' buttons for each comment.");
-        } else System.out.println("Creating 'add' and 'remove' buttons was disabled via a query parameter.");
+        }
 
         replaceRedditLinks(doc.head());
         replaceRedditLinks(doc.body());
 
-        System.out.println("Finished rerouting all reddit.com links back to our server.");
+        //System.out.println("Finished rerouting all reddit.com links back to our server.");
 
         //noinspection HtmlUnknownTarget
         doc.append("<script src='/rvm_js.js'></script>");
@@ -137,10 +147,10 @@ public class RedditParser {
             doc.append("<span style='display: none !important;' id='title-thing-id' data-thing-id='" + titleThingId + "'></span>");
         }
 
-        System.out.println("Finished injecting the javascript.");
+        //System.out.println("Finished injecting the javascript.");
 
         //Return this HTML to the web server to be displayed.
-        System.out.println("All done! Returning the Reddit HTML to the client.");
+        //System.out.println("All done! Returning the Reddit HTML to the client.");
         return doc.html();
     }
 

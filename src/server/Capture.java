@@ -1,10 +1,7 @@
 package server;
 
 import com.google.gson.Gson;
-import main.Config;
-import main.Main;
-import main.VideoManifest;
-import main.VideoManifestComment;
+import main.*;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -26,9 +23,10 @@ import java.util.*;
 public class Capture {
 
     private static final String CHROME_DRIVER = "D:/chromedriver/chromedriver.exe";
+    private static final int SOFT_CHAR_LIMIT = 600;
     private static long startTime;
 
-    private static <T> T[] append(T[] arr, T element) {
+    static <T> T[] append(T[] arr, T element) {
         final int N = arr.length;
         arr = Arrays.copyOf(arr, N + 1);
         arr[N] = element;
@@ -56,11 +54,16 @@ public class Capture {
         Main.out("[Capture] AutoCapture called for \"" + url + "\".");
         Document d = Jsoup.parse(RedditParser.main(url, true));
         ArrayList<String> comments = new ArrayList<>();
+        int charCount = 0;
         for (Element e : d.select(".thing")) {
             String thingId = e.attr("data-fullname");
             if (thingId.length() == 10) {
                 comments.add(thingId);
+                if (e.select(".entry .md").size() > 0) {
+                    charCount += e.selectFirst(".entry .md").text().length();
+                } else charCount += 500;
             }
+            if (comments.size() >= 300 || charCount > 25000) break;
         }
         //Set values that are expected by SelectiveCapture
         query.put("postType", "firstandlast");
@@ -145,7 +148,7 @@ public class Capture {
         if (Server.manifest.thumbnailTexts == null) Server.manifest.thumbnailTexts = new String[]{};
         if (Server.manifest.isFeatured == null) Server.manifest.isFeatured = new Boolean[]{};
 
-        System.out.println(driver.getPageSource());
+        //System.out.println(driver.getPageSource());
 
         String sr = "/r/" + driver.findElement(By.cssSelector("span.redditname>a")).getText() + "/";
         Server.manifest.URLs = append(Server.manifest.URLs, driver.findElement(By.cssSelector("link[rel=shorturl]")).getAttribute("href"));
@@ -200,8 +203,48 @@ public class Capture {
                     els = driver.findElements(By.className("top-matter"));
                     paraCssSelector = ".top-matter";
                 } else {
-                    els = driver.findElements(By.cssSelector("#thing_" + thingId + ">.entry .md p"));
-                    paraCssSelector = "#thing_" + thingId + ">.entry .md p";
+                    if (driver.findElement(By.cssSelector("#thing_" + thingId + ">.entry .md")).getText().length() > SOFT_CHAR_LIMIT) {
+                        //Divide into groups of paragraphs if the post is over 4000 characters
+                        els = driver.findElements(By.cssSelector("#thing_" + thingId + ">.entry .md p"));
+                        int currentGroupLength = 0;
+                        int index = 0;
+                        ArrayList<Integer> indexes = new ArrayList<>();
+                        for (WebElement el : els) {
+                            currentGroupLength += el.getText().length();
+                            index++;
+                            if (currentGroupLength > SOFT_CHAR_LIMIT) {
+                                indexes.add(index);
+                                index = 0;
+                            }
+                        }
+                        int groupNumber = 0;
+                        System.out.println("Groups (by # of paragraphs in each): " + indexes.toString());
+                        for (int len : indexes) {
+                            String js =
+                                    "var newDiv = document.createElement('div');\n" +
+                                            "newDiv.setAttribute('id', 'thing_" + thingId + "_group_" + groupNumber + "');\n" +
+                                            "newDiv.setAttribute('class', 'thingGroup');\n" +
+                                            "document.querySelector('#thing_" + thingId + ">.entry .md').append(newDiv);\n";
+
+                            for (int temp = len; temp > 0; temp--) {
+                                //noinspection StringConcatenationInLoop
+                                js += "newDiv.appendChild(document.querySelector('#thing_" + thingId + ">.entry .md p:nth-child(1)'));\n";
+                            }
+
+                            System.out.println("---Executing JS---\n" + js + "\n------------------");
+
+                            ((JavascriptExecutor) driver).executeScript(js);
+
+                            groupNumber++;
+                        }
+                        System.out.println("Grouped.");
+                        paraCssSelector = "#thing_" + thingId + " .thingGroup";
+                        els = driver.findElements(By.cssSelector(paraCssSelector));
+                    } else {
+                        //Don't divide into paragraphs if the post is less than or equal to 4000 characters
+                        els = driver.findElements(By.cssSelector("#thing_" + thingId + ">.entry"));
+                        paraCssSelector = "#thing_" + thingId + ">.entry";
+                    }
                 }
                 for (WebElement e : els) {
                     if (!e.getAttribute("class").contains("tagline")) {
@@ -224,14 +267,24 @@ public class Capture {
                         continue;
                     }
                     VideoManifestComment c = new VideoManifestComment();
-                    c.text = (i == 0 ? p.findElement(By.cssSelector("a.title")).getText() : p.getText());
+                    if (i == 0) {
+                        c.text = p.findElement(By.cssSelector("a.title")).getText();
+                    } else {
+                        c.text = p.getText();
+                        try {
+                            c.text = p.findElement(By.cssSelector(".md")).getText();
+                            System.out.println("Comment text was assigned from child <p> text, not from parent element.");
+                        } catch (NoSuchElementException ignored) {
+
+                        }
+                    }
 
                     JavascriptExecutor js = (JavascriptExecutor) driver;
                     String imageDataURL = (String) js.executeAsyncScript("var thingId = arguments[0];\n" +
                             "var callback = arguments[arguments.length - 1];\n" +
                             "console.log(\"Capturing item with thing ID \", thingId);\n" +
                             "var thing = document.getElementById(\"thing_\" + thingId);\n" +
-                            "var el = thing.querySelectorAll('" + paraCssSelector + "')[" + (j) + "];\n" +
+                            "var el = thing.querySelectorAll('" + paraCssSelector + "')[" + j + "];\n" +
                             "console.log('Capturing element', el);" +
                             "thing.scrollIntoView(true);\n" +
                             "domtoimage.toPng(el, {\n" +
@@ -256,20 +309,54 @@ public class Capture {
                     File screenshotLocation = new File(Config.getDownloadsFolder() + "/rvm_dl_" + uid + "_thing_" + thingId + "_" + j + "_para" + (i == 0 ? "_title" : "") + ".png");
                     ImageIO.write(bufferedImage, "png", screenshotLocation);
 
+                    try {
+                        driver.findElement(By.cssSelector(paraCssSelector + " .tagline"));
+                        System.out.println("Post already has a tagline.");
+                    } catch (NoSuchElementException ignored) {
+                        System.out.println("Post does not have a tagline. Appending it to the image...");
+                        if (i != 0) {
+                            String taglineDataURL = (String) js.executeAsyncScript("var thingId = arguments[0];\n" +
+                                    "var callback = arguments[arguments.length - 1];\n" +
+                                    "console.log(\"Capturing tagline with thing ID \", thingId);\n" +
+                                    "var thing = document.getElementById(\"thing_\" + thingId);\n" +
+                                    "var el = thing.querySelector('p.tagline');\n" +
+                                    "console.log('Capturing element', el);thing.scrollIntoView(true);\n" +
+                                    "domtoimage.toPng(el, {\n" +
+                                    "    bgcolor: '#414141'\n" +
+                                    "}).then(function(dataURL) {\n" +
+                                    "    console.log(\"Finished capturing image\", dataURL);\n" +
+                                    "    callback(dataURL);\n" +
+                                    "}).catch(function(error) {\n" +
+                                    "    console.error(\"Error rendering image\", error);\n" +
+                                    "    callback(null);\n" +
+                                    "});", thingId);
+
+                            byte[] taglineData = new byte[]{};
+                            try {
+                                taglineData = DatatypeConverter.parseBase64Binary(taglineDataURL.split(",")[1]);
+                            } catch (ArrayIndexOutOfBoundsException ignored2) {
+                            }
+
+                            BufferedImage tagline = ImageIO.read(new ByteArrayInputStream(taglineData));
+                            File taglineLocation = new File(Config.getDownloadsFolder(), "tagline.png");
+                            ImageIO.write(tagline, "png", taglineLocation);
+
+                            AppendTagline.appendTagline(screenshotLocation, taglineLocation, screenshotLocation);
+
+                            //noinspection ResultOfMethodCallIgnored
+                            taglineLocation.delete();
+                        }
+                    }
+
                     c.name = screenshotLocation.getName();
                     c.isTitle = i == 0;
                     c.thingId = thingId + "_" + j + "_para" + (i == 0 ? "_title" : "");
                     c.DLid = uid;
                     c.subreddit = sr;
                     c.indexInPost = i;
-                    System.out.println("CSS Value for background-color for `p` is: " + p.getCssValue("background-color"));
-                    System.out.println("Comment text: " + c.text);
-                    System.out.println("---------------");
                     //We're going to check if it is a parent comment by its CSS `orphans` value
                     // (doesn't change how anything looks in this case, but for child comments I set it to '10')
                     boolean isParentComment = !p.getCssValue("orphans").equals("10");
-                    System.out.println("css value: " + p.getCssValue("orphans"));
-                    System.out.println("based on css value above, the comment that says \"" + c.text + "\" is" + (isParentComment ? " not" : "") + " a child comment.");
                     c.isParent = (
                             //Is a parent comment (is not surrounded by anything that matches ".child" css selector)
                             isParentComment
@@ -277,8 +364,6 @@ public class Capture {
                                     && j == 0
                                     //Isn't the first comment in the vid (the title)
                                     && i != 0);
-                    System.out.println("j = " + j);
-                    System.out.println("i = " + i);
 
                     comments.add(c);
                     j++;

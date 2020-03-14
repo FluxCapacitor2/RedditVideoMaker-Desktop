@@ -11,6 +11,7 @@ import java.io.*;
 import java.net.*;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Scanner;
 
 public class Server {
 
@@ -28,7 +29,7 @@ public class Server {
         System.out.println("Starting...");
         HttpServer server;
         try {
-            server = HttpServer.create(new InetSocketAddress(port), 10000);
+            server = HttpServer.create(new InetSocketAddress(port), 64);
         } catch (BindException e) {
             if (port + 1 >= 65535) {
                 //Overflow the port number if it's over the 16-bit int limit
@@ -38,16 +39,10 @@ public class Server {
             main(port + 1);
             return;
         }
-        //server.createContext("/reddit", new SubredditHandler());
-        //server.createContext("/r/", new SubredditHandler());
-        //server.createContext("/api/morechildren", new RedditApiMoreChildrenHandler());
-        //server.createContext("/res_nightmode.css", new FileHandler(Server.class.getResource("res_nightmode.css"), "text/css"));
         server.createContext("/", new GeneralHandler());
-        //Thread control is given to executor service.
         server.setExecutor(java.util.concurrent.Executors.newCachedThreadPool());
         server.start();
         System.out.println("Server is running at port " + port);
-        System.out.println("http://" + Inet4Address.getLocalHost().getHostAddress() + ":" + port + "/");
     }
 
     private static Map<String, String> splitQuery(URL url) throws UnsupportedEncodingException {
@@ -59,6 +54,22 @@ public class Server {
             query_pairs.put(URLDecoder.decode(pair.substring(0, idx), "UTF-8"), URLDecoder.decode(pair.substring(idx + 1), "UTF-8"));
         }
         return query_pairs;
+    }
+
+    private static void printRequestInfo(HttpExchange t) {
+        System.out.println("-------------------- START REQUEST INFO");
+        System.out.println("Local Address: " + t.getLocalAddress().toString());
+        System.out.println("Request Method: " + t.getRequestMethod());
+        System.out.println("Protocol: " + t.getProtocol());
+        Scanner s = new Scanner(t.getRequestBody()).useDelimiter("\\A");
+        String body = s.hasNext() ? s.next() : "";
+        System.out.println("Request Body: [\n" + body + "\n]");
+        System.out.println("Remote Address: " + t.getRemoteAddress().toString());
+        System.out.println("Request Headers:");
+        for (String k : t.getRequestHeaders().keySet()) {
+            System.out.println(k + " -> " + t.getRequestHeaders().get(k));
+        }
+        System.out.println("-------------------- END REQUEST INFO");
     }
 
     private static class GeneralHandler implements HttpHandler {
@@ -93,13 +104,15 @@ public class Server {
                     //System.out.println("[GeneralHandler] Done!");
                 } else {
                     System.out.println("404 Not Found");
+                    printRequestInfo(httpExchange);
                     httpExchange.sendResponseHeaders(404, 0);
                     OutputStream os = httpExchange.getResponseBody();
                     os.close();
                 }
             } catch (Exception e) {
                 if (e.getMessage() != null && !e.getMessage().isEmpty() &&
-                        !e.getMessage().contains("An established connection was aborted by the software in your host machine")) {
+                        !e.getMessage().contains("An established connection was aborted by the software in your host machine") &&
+                        !e.getMessage().contains("An existing connection was forcibly closed by the remote host")) {
                     e.printStackTrace();
                 }
                 httpExchange.sendResponseHeaders(500, 0);
@@ -164,7 +177,7 @@ public class Server {
                     "        setTimeout(function () {\n" +
                     "            x.open('GET', '/renderstatus.json', true);\n" +
                     "            x.send();\n" +
-                    "        }, 250);\n" +
+                    "        }, 750);\n" +
                     "    }\n" +
                     "    x.open('GET', '/renderstatus.json', true);\n" +
                     "\n" +
