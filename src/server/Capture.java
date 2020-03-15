@@ -63,7 +63,7 @@ public class Capture {
                     charCount += e.selectFirst(".entry .md").text().length();
                 } else charCount += 500;
             }
-            if (comments.size() >= 300 || charCount > 25000) break;
+            if (comments.size() >= 250 || charCount > 25000) break;
         }
         //Set values that are expected by SelectiveCapture
         query.put("postType", "firstandlast");
