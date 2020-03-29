@@ -63,7 +63,7 @@ public class Capture {
                     charCount += e.selectFirst(".entry .md").text().length();
                 } else charCount += 500;
             }
-            if (comments.size() >= 250 || charCount > 25000) break;
+            if (comments.size() >= 170 || charCount > 17000) break;
         }
         //Set values that are expected by SelectiveCapture
         query.put("postType", "firstandlast");
@@ -273,11 +273,14 @@ public class Capture {
                         c.text = p.getText();
                         try {
                             c.text = p.findElement(By.cssSelector(".md")).getText();
-                            System.out.println("Comment text was assigned from child <p> text, not from parent element.");
+                            //System.out.println("Comment text was assigned from child <p> text, not from parent element.");
                         } catch (NoSuchElementException ignored) {
 
                         }
                     }
+
+                    //Remove URLs from the comment's text so the TTS doesn't have to say it.
+                    c.text = c.text.replaceAll("^(https?|ftp|file)://[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]", "(link)");
 
                     JavascriptExecutor js = (JavascriptExecutor) driver;
                     String imageDataURL = (String) js.executeAsyncScript("var thingId = arguments[0];\n" +

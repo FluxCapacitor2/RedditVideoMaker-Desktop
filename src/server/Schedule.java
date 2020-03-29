@@ -22,7 +22,7 @@ public class Schedule {
         System.out.println("Server started. Now starting schedule...");
 
         ScheduledExecutorService ses = Executors.newSingleThreadScheduledExecutor();
-        ses.scheduleAtFixedRate(Schedule::loop, 0, 8, TimeUnit.HOURS);
+        ses.scheduleAtFixedRate(Schedule::loop, 4, 8, TimeUnit.HOURS);
     }
 
     private static void loop() {
