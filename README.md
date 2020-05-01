@@ -80,5 +80,5 @@ This program was *only* tested on Windows 10. Possibly others could test on othe
 *Thanks to the authors of all of these programs/APIs! They've really helped me develop RVM quickly and easily.*
 - [Balabolka](http://www.cross-plus-a.com/balabolka.htm) (Freeware, but I can't find the sources anywhere)
 - [YouTube Data API](https://console.developers.google.com/apis/library/youtube.googleapis.com?id=125bab65-cfb6-4f25-9826-4dcc309bc508) (Closed-source)
-- [FFmpeg and FFprob](http://ffmpeg.org/) (Open-source)
+- [FFmpeg and FFprobe](http://ffmpeg.org/) (Open-source)
 - [Jaffree](https://github.com/kokorin/Jaffree) (Open-source)
