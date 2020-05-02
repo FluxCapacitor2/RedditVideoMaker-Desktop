@@ -5,12 +5,18 @@ import main.Config;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.nodes.Entities;
 import org.jsoup.select.Elements;
 
-import java.io.*;
-import java.net.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.Inet4Address;
+import java.net.URLEncoder;
+import java.net.UnknownHostException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
-import java.util.Scanner;
 
 public class RedditParser {
 
@@ -30,13 +36,11 @@ public class RedditParser {
         Document doc;
         try {
             System.out.println("RedditParser: Requesting \"" + redditUrl + "\"");
-            URL reddit = new URL(redditUrl);
-            URLConnection con = reddit.openConnection();
-            con.setRequestProperty("User-Agent", RandomUserAgent.getRandomUserAgent());
-            InputStream response = con.getInputStream();
-            Scanner scanner = new Scanner(response);
-            String html = scanner.useDelimiter("\\A").next();
-            doc = Jsoup.parse(html);
+            Document.OutputSettings s = new Document.OutputSettings();
+            s.prettyPrint(true);
+            s.escapeMode(Entities.EscapeMode.extended);
+            s.charset(StandardCharsets.UTF_8);
+            doc = Jsoup.connect(redditUrl).userAgent(RandomUserAgent.getRandomUserAgent()).header("Content-Type", "text/html; charset=UTF-8").get().outputSettings(s);
             System.out.println("RedditParser: Reddit was loaded");
         } catch (UnknownHostException e) {
             System.out.println("RedditParser: UnknownHostException");
@@ -95,6 +99,7 @@ public class RedditParser {
             }
         }
         doc.append("<script type='text/javascript'>document.getElementById('tText').value = decodeURIComponent(\"" + URLEncoder.encode(postTitle, "UTF-8") + "\").replace(/\\+/g, ' ');</script>");
+
 
         if (autoCapture && hideButtons) {
             //If the link specified to auto capture, hide all second-level child comments when we're capturing.
@@ -157,6 +162,7 @@ public class RedditParser {
     private static void replaceRedditLinks(Element el) {
         Elements children = el.children();
         if (children.size() == 0) {
+            //Replace reddit links and convert unicode chars to HTML entities because of encoding problems
             el.text(replaceRedditLinks(el.text()));
             if (el.hasAttr("href")) {
                 el.attr("href", replaceRedditLinks(el.attr("href")));
@@ -175,9 +181,9 @@ public class RedditParser {
             host = "127.0.0.1"; //127.0.0.1 is the same as "localhost"
         }
         return input
-                .replace("old.reddit.com", host + ":8080")
-                .replace("reddit.com", host + ":8080")
-                .replace("www.reddit.com", host + ":8080")
+                .replace("old.reddit.com", host + ":" + Server.port)
+                .replace("reddit.com", host + ":" + Server.port)
+                .replace("www.reddit.com", host + ":" + Server.port)
                 .replace("https://", "http://");
     }
 }

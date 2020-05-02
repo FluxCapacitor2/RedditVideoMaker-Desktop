@@ -15,8 +15,10 @@ import java.util.Scanner;
 
 public class Server {
 
-    //public static final String CONTENT_TYPE = "text/html; charset=ISO-8859-1"; //This one works when the JAR is compiled...
-    public static final String CONTENT_TYPE = "text/html; charset=UTF-8"; //and this one works in IntelliJ IDEA...
+    //If strange characters appear in the final results, change the content type of the page:
+    //public static final String CONTENT_TYPE = "text/html; charset=ISO-8859-1";
+    //public static final String CONTENT_TYPE = "text/html; charset=UTF-8";
+    public static final String CONTENT_TYPE = "text/html; charset=windows-1257";
     static VideoManifest manifest = new VideoManifest();
     public static int port;
 

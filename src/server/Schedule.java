@@ -2,6 +2,7 @@ package server;
 
 import com.google.gson.Gson;
 import main.Config;
+import main.Main;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -18,11 +19,13 @@ public class Schedule {
     private static final int COMMENTS_THRESHOLD = 2500;
 
     public static void main(String[] args) throws IOException {
+        System.out.println("Starting server...");
         Server.main(new String[]{});
         System.out.println("Server started. Now starting schedule...");
 
         ScheduledExecutorService ses = Executors.newSingleThreadScheduledExecutor();
         ses.scheduleAtFixedRate(Schedule::loop, 4, 8, TimeUnit.HOURS);
+        System.out.println("Done.");
     }
 
     private static void loop() {
@@ -48,7 +51,8 @@ public class Schedule {
                         break;
                     }
                 }
-                if (duplicate) continue;
+                //If we're debugging, duplicates don't matter because they will not be uploaded anyway.
+                if (duplicate && !Main.DEBUGGING) continue;
                 //Skip advertisment posts
                 if (url.contains("alb.reddit.com")) continue;
                 //Skip posts with less comments than the requirement

@@ -26,12 +26,16 @@ class UploadVideo {
      * execute API request. Print API response.
      */
     static void main(String filePath, String videoTitle, String videoDescription, List<String> videoTags) throws FileNotFoundException, IllegalAccessException, NoSuchFieldException {
-        UploadVideo.filePath = filePath;
-        UploadVideo.videoTitle = videoTitle;
-        UploadVideo.videoDescription = videoDescription;
-        UploadVideo.videoTags = videoTags;
+        if (!Main.DEBUGGING) {
+            UploadVideo.filePath = filePath;
+            UploadVideo.videoTitle = videoTitle;
+            UploadVideo.videoDescription = videoDescription;
+            UploadVideo.videoTags = videoTags;
 
-        new UploadScheduler();
+            new UploadScheduler();
+        } else {
+            System.out.println("[WARNING] Video schedule and upload skipped because `Main.DEBUGGING` is set to `true`.");
+        }
     }
 
     static void onDateTimeGathered(DateTime dt) throws IOException, GeneralSecurityException {

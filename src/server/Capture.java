@@ -9,6 +9,7 @@ import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.remote.DesiredCapabilities;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -23,6 +24,7 @@ import java.util.*;
 public class Capture {
 
     private static final String CHROME_DRIVER = "D:/chromedriver/chromedriver.exe";
+    private static final boolean HEADLESS = !Main.DEBUGGING;
     private static final int SOFT_CHAR_LIMIT = 600;
     private static long startTime;
 
@@ -134,11 +136,26 @@ public class Capture {
 
         System.setProperty("webdriver.chrome.driver", CHROME_DRIVER);
         ChromeOptions options = new ChromeOptions();
-        options.setHeadless(false);
+        DesiredCapabilities capabilities = DesiredCapabilities.chrome();
+        capabilities.setCapability("acceptSslCerts", true);
+        capabilities.setCapability("acceptInsecureCerts", true);
+        options.setAcceptInsecureCerts(true);
+        options.addArguments("--window-size=960,1080");
+        options.addArguments("--disable-gpu");
+        options.addArguments("--disable-extensions");
+        options.setExperimentalOption("useAutomationExtension", false);
+        options.addArguments("--proxy-server='direct://'");
+        options.addArguments("--proxy-bypass-list=*");
+        options.addArguments("--start-maximized");
+        options.addArguments("--headless");
+        options.addArguments("--disable-dev-shm-usage");
+        options.addArguments("--no-sandbox");
+        options.addArguments("--ignore-certificate-errors");
+        options.setHeadless(HEADLESS);
         options.setProxy(null);
         WebDriver driver = new ChromeDriver(options);
         Main.out("[Capture] Driver started");
-        driver.get(url);
+        driver.get("http://" + url);
         Main.out("[Capture] URL Loaded: " + url);
 
         if (Server.manifest.URLs == null) Server.manifest.URLs = new String[]{};
@@ -204,7 +221,7 @@ public class Capture {
                     paraCssSelector = ".top-matter";
                 } else {
                     if (driver.findElement(By.cssSelector("#thing_" + thingId + ">.entry .md")).getText().length() > SOFT_CHAR_LIMIT) {
-                        //Divide into groups of paragraphs if the post is over 4000 characters
+                        //Divide into groups of paragraphs if the post is over 600 characters
                         els = driver.findElements(By.cssSelector("#thing_" + thingId + ">.entry .md p"));
                         int currentGroupLength = 0;
                         int index = 0;
@@ -241,7 +258,7 @@ public class Capture {
                         paraCssSelector = "#thing_" + thingId + " .thingGroup";
                         els = driver.findElements(By.cssSelector(paraCssSelector));
                     } else {
-                        //Don't divide into paragraphs if the post is less than or equal to 4000 characters
+                        //Don't divide into paragraphs if the post is less than or equal to 600 characters
                         els = driver.findElements(By.cssSelector("#thing_" + thingId + ">.entry"));
                         paraCssSelector = "#thing_" + thingId + ">.entry";
                     }
@@ -267,12 +284,13 @@ public class Capture {
                         continue;
                     }
                     VideoManifestComment c = new VideoManifestComment();
+                    String cText;
                     if (i == 0) {
-                        c.text = p.findElement(By.cssSelector("a.title")).getText();
+                        cText = p.findElement(By.cssSelector("a.title")).getText();
                     } else {
-                        c.text = p.getText();
+                        cText = p.getText();
                         try {
-                            c.text = p.findElement(By.cssSelector(".md")).getText();
+                            cText = p.findElement(By.cssSelector(".md")).getText();
                             //System.out.println("Comment text was assigned from child <p> text, not from parent element.");
                         } catch (NoSuchElementException ignored) {
 
@@ -280,78 +298,128 @@ public class Capture {
                     }
 
                     //Remove URLs from the comment's text so the TTS doesn't have to say it.
-                    c.text = c.text.replaceAll("^(https?|ftp|file)://[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]", "(link)");
+                    cText = cText.replaceAll("^(https?|ftp|file)://[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]", "(link)");
 
-                    JavascriptExecutor js = (JavascriptExecutor) driver;
-                    String imageDataURL = (String) js.executeAsyncScript("var thingId = arguments[0];\n" +
-                            "var callback = arguments[arguments.length - 1];\n" +
-                            "console.log(\"Capturing item with thing ID \", thingId);\n" +
-                            "var thing = document.getElementById(\"thing_\" + thingId);\n" +
-                            "var el = thing.querySelectorAll('" + paraCssSelector + "')[" + j + "];\n" +
-                            "console.log('Capturing element', el);" +
-                            "thing.scrollIntoView(true);\n" +
-                            "domtoimage.toPng(el, {\n" +
-                            "    bgcolor: '#414141'\n" +
-                            "}).then(function(dataURL) {\n" +
-                            "    console.log(\"Finished capturing image\", dataURL);\n" +
-                            "    callback(dataURL);\n" +
-                            "}).catch(function(error) {\n" +
-                            "    console.error(\"Error rendering image\", error);\n" +
-                            "});", thingId);
+                    String[] sentences = cText.split("(?<=[;,.!?])");
+                    c.text = sentences;
+                    ArrayList<String> tempScreenshots = new ArrayList<>();
 
-                    //Main.out("Image data gathered: " + imageDataURL);
-                    byte[] data;
-                    try {
-                        data = DatatypeConverter.parseBase64Binary(imageDataURL.split(",")[1]);
-                    } catch (ArrayIndexOutOfBoundsException e) {
-                        j++;
-                        Main.out("Skipping post because there was no image data.");
-                        continue;
-                    }
-                    BufferedImage bufferedImage = ImageIO.read(new ByteArrayInputStream(data));
-                    File screenshotLocation = new File(Config.getDownloadsFolder() + "/rvm_dl_" + uid + "_thing_" + thingId + "_" + j + "_para" + (i == 0 ? "_title" : "") + ".png");
-                    ImageIO.write(bufferedImage, "png", screenshotLocation);
+                    //paraCssSelector can be: #thing_[thingId] > .entry
+                    // OR                   : #thing_[thingId] .thingGroup
+                    //OR                    : .top-matter
+                    for (int s = 1; s < sentences.length + 1; s++) {
+                        System.out.println("Capturing sentence #" + s + " of " + sentences.length + "...");
+                        JavascriptExecutor js = (JavascriptExecutor) driver;
+                        String imageDataURL = (String) js.executeAsyncScript("var thingId = arguments[0];\n" +
+                                "var callback = arguments[arguments.length - 1];\n" +
+                                "console.log(\"Capturing item with thing ID \", thingId);\n" +
+                                "var thing = document.getElementById(\"thing_\" + thingId);\n" +
+                                "var el = thing.querySelectorAll('" + paraCssSelector + "')[" + j + "];\n" +
+                                "var md = el.querySelector(\"div.md\");\n" +
+                                "console.log('Capturing (outer) element', el, 'Inner text element', md);\n" +
+                                "thing.scrollIntoView(true);\n" +
+                                "if(md == null) {\n" +
+                                "    //If md == null, then we're capturing a grouped post (>600 characters)\n" +
+                                "    //This means there is no need to find `.md` as `.thingGroup`s are always inside `div.md`s\n" +
+                                "    md = el;\n" +
+                                "}\n" +
+                                "\n" +
+                                "//Capture only up to the sentence number specified by `s`.\n" +
+                                "if (md != null) {\n" +
+                                "    " +
+                                "var oldHTML = md.innerHTML;\n" +
+                                "    " +
+                                "var sentences = oldHTML.replace(/[;,.!?]/g, function (x) {\n" +
+                                "        return x + '§';\n" +
+                                "    " +
+                                "}).split(/§/g);\n" +
+                                "    " +
+                                "var sentence = " + s + ";\n" +
+                                "    " +
+                                "var currentText = '';\n" +
+                                "    " +
+                                "for (var i = 0; i < sentence; i++) {\n" +
+                                "        currentText += sentences[i];\n" +
+                                "    " +
+                                "}\n" +
+                                "\n" +
+                                "    " +
+                                "md.innerHTML = currentText;\n" +
+                                "} else {\n" +
+                                "    console.warn(\"[WARNING] No inner text element found for post \" + thingId + \". This is only okay if we are \" +\n" +
+                                "            \"capturing the top-matter right now.\");\n" +
+                                "}\n" +
+                                "\n" +
+                                "domtoimage.toPng(el, {\n" +
+                                "    bgcolor: '#414141'\n" +
+                                "}).then(function (dataURL) {\n" +
+                                "    //Reset the element for future screenshots (of the next sentences)\n" +
+                                "    if (md != null) {\n" +
+                                "        md.innerHTML = oldHTML;\n" +
+                                "    }\n" +
+                                "    console.log(\"Finished capturing image\", dataURL);\n" +
+                                "    callback(dataURL);\n" +
+                                "}).catch(function (error) {\n" +
+                                "    console.error(\"Error rendering image\", error);\n" +
+                                "});", thingId);
 
-                    try {
-                        driver.findElement(By.cssSelector(paraCssSelector + " .tagline"));
-                        System.out.println("Post already has a tagline.");
-                    } catch (NoSuchElementException ignored) {
-                        System.out.println("Post does not have a tagline. Appending it to the image...");
-                        if (i != 0) {
-                            String taglineDataURL = (String) js.executeAsyncScript("var thingId = arguments[0];\n" +
-                                    "var callback = arguments[arguments.length - 1];\n" +
-                                    "console.log(\"Capturing tagline with thing ID \", thingId);\n" +
-                                    "var thing = document.getElementById(\"thing_\" + thingId);\n" +
-                                    "var el = thing.querySelector('p.tagline');\n" +
-                                    "console.log('Capturing element', el);thing.scrollIntoView(true);\n" +
-                                    "domtoimage.toPng(el, {\n" +
-                                    "    bgcolor: '#414141'\n" +
-                                    "}).then(function(dataURL) {\n" +
-                                    "    console.log(\"Finished capturing image\", dataURL);\n" +
-                                    "    callback(dataURL);\n" +
-                                    "}).catch(function(error) {\n" +
-                                    "    console.error(\"Error rendering image\", error);\n" +
-                                    "    callback(null);\n" +
-                                    "});", thingId);
-
-                            byte[] taglineData = new byte[]{};
-                            try {
-                                taglineData = DatatypeConverter.parseBase64Binary(taglineDataURL.split(",")[1]);
-                            } catch (ArrayIndexOutOfBoundsException ignored2) {
-                            }
-
-                            BufferedImage tagline = ImageIO.read(new ByteArrayInputStream(taglineData));
-                            File taglineLocation = new File(Config.getDownloadsFolder(), "tagline.png");
-                            ImageIO.write(tagline, "png", taglineLocation);
-
-                            AppendTagline.appendTagline(screenshotLocation, taglineLocation, screenshotLocation);
-
-                            //noinspection ResultOfMethodCallIgnored
-                            taglineLocation.delete();
+                        //Main.out("Image data gathered: " + imageDataURL);
+                        byte[] data;
+                        try {
+                            data = DatatypeConverter.parseBase64Binary(imageDataURL.split(",")[1]);
+                        } catch (ArrayIndexOutOfBoundsException e) {
+                            j++;
+                            Main.out("[WARNING] Skipping post because there was no image data.");
+                            continue;
                         }
+                        BufferedImage bufferedImage = ImageIO.read(new ByteArrayInputStream(data));
+                        File screenshotLocation = new File(Config.getDownloadsFolder() + "/rvm_dl_" + uid + "_thing_" + thingId + "_" + j + "_para" + (i == 0 ? "_title" : "") + "_s" + (s - 1) + ".png");
+                        ImageIO.write(bufferedImage, "png", screenshotLocation);
+
+                        // APPEND TAGLINE TO IMAGE IF NECESSARY
+                        try {
+                            driver.findElement(By.cssSelector(paraCssSelector + " .tagline"));
+                            System.out.println("Post already has a tagline.");
+                        } catch (NoSuchElementException ignored) {
+                            System.out.println("Post does not have a tagline. Appending it to the image...");
+                            if (i != 0) {
+                                String taglineDataURL = (String) js.executeAsyncScript("var thingId = arguments[0];\n" +
+                                        "var callback = arguments[arguments.length - 1];\n" +
+                                        "console.log(\"Capturing tagline with thing ID \", thingId);\n" +
+                                        "var thing = document.getElementById(\"thing_\" + thingId);\n" +
+                                        "var el = thing.querySelector('p.tagline');\n" +
+                                        "console.log('Capturing element', el);thing.scrollIntoView(true);\n" +
+                                        "domtoimage.toPng(el, {\n" +
+                                        "    bgcolor: '#414141'\n" +
+                                        "}).then(function(dataURL) {\n" +
+                                        "    console.log(\"Finished capturing image\", dataURL);\n" +
+                                        "    callback(dataURL);\n" +
+                                        "}).catch(function(error) {\n" +
+                                        "    console.error(\"Error rendering image\", error);\n" +
+                                        "    callback(null);\n" +
+                                        "});", thingId);
+
+                                byte[] taglineData = new byte[]{};
+                                try {
+                                    taglineData = DatatypeConverter.parseBase64Binary(taglineDataURL.split(",")[1]);
+                                } catch (ArrayIndexOutOfBoundsException ignored2) {
+                                }
+
+                                BufferedImage tagline = ImageIO.read(new ByteArrayInputStream(taglineData));
+                                File taglineLocation = new File(Config.getDownloadsFolder(), "tagline.png");
+                                ImageIO.write(tagline, "png", taglineLocation);
+
+                                AppendTagline.appendTagline(screenshotLocation, taglineLocation, screenshotLocation);
+
+                                //noinspection ResultOfMethodCallIgnored
+                                taglineLocation.delete();
+                            }
+                        }
+                        tempScreenshots.add(screenshotLocation.getName());
+                        System.out.println("Done! File was saved to " + screenshotLocation.getAbsolutePath());
                     }
 
-                    c.name = screenshotLocation.getName();
+                    c.sentences = tempScreenshots.toArray(new String[]{});
                     c.isTitle = i == 0;
                     c.thingId = thingId + "_" + j + "_para" + (i == 0 ? "_title" : "");
                     c.DLid = uid;
