@@ -74,6 +74,7 @@ You can download my code style settings from the EditorConfig files located in e
 ### Testing and OS Support
 This program was *only* tested on Windows 10 in my environment. Possibly others could test on other operating systems in the future, but some of the OS-specific config must be changed.
 ### TODO
+- [ ] Make background videos repeat if necessary
 - [ ] Ability to set TTS audio to be spoken for images
 - [ ] Ability to narrate the text in screenshots instead of using text to speech (like a voice recorder)
 - [ ] Ability to change TTS voice
