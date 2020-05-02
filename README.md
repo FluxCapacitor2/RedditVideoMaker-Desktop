@@ -1,6 +1,7 @@
 # RedditVideoMaker
 A program that creates Reddit videos from start to finish, including taking screenshots, generating an audio track, adding an outro sequence, and uploading the final video to YouTube and adding a title, description, thumbnail, and tags.
-*Once someone runs the server, the program can be run **completely** from the web!*
+
+*Once started, this program can be run as a service in the background with NO NEED for human intervention! (currently, this feature only supports r/AskReddit)*
 ## Installation
 ### Step 1
 Download the [Daniel TTS voice](https://github.com/FluxCapacitor2/RedditVideoMaker-Desktop/blob/master/Daniel%2022Khz%20MLG%20voice.exe?raw=true) (~90 MB) from this link and install it in the default directory.
@@ -28,7 +29,7 @@ Create an API key for the YouTube Data API v3:
 13. Click "Enable"
 ### Step 5
 1. Add background videos to the `backgrounds` folder inside the downloaded library folder template.
-    * *Background videos are *not* repeated, so make sure they are at least a few minutes long! If the background file is not long enough, the background video will play behind the screenshot until it ends, and then the background will be black.*
+    * *Background videos are *not* repeated, so make sure they are about 30 minutes long! If the background file is not long enough, the background video will play behind the screenshot until it ends, and then the background will be black.*
 2. Add background music tracks to the `audio` folder inside the downloaded library folder template.
     * *Background music files should be named as it will show up in the music credits. For example, `New Land by ALBIS.mp3` shows up in the music credits as `New Land by ALBIS`.*
     * *All formats accepted by FFmpeg are allowed, but all audio files must be the same format and codec.*
@@ -60,21 +61,27 @@ These subreddits are supported, but many, many more may be supported (but they a
 
 *All text-based subreddits are supported. Images don't really work yet (if you want image support, you can work on it! see the Contributing section below).*
 ## Sources
-* You can look at or download the sources for the program in the GitHub repo: https://github.com/FluxCapacitor2/RedditVideoMaker-Desktop
+* You can look at or download the sources for the program in the [GitHub repo](https://github.com/FluxCapacitor2/RedditVideoMaker-Desktop).
 * Compiled sources are located at `out/production/RedditVideoMaker-Desktop/`
 * A compiled JAR can be found at `out/artifacts/RedditVideoMaker_Desktop_jar/RedditVideoMaker-Desktop.jar`. This JAR is directly executable and can be added to the startup folder on Windows.
+*(If you want RVM to start on startup, add a batch file to the startup folder with the contents `java -jar path/to/RVM.jar` so that you can see the console output in caase of an error)*
 ## Contributing
 ### Contributors
 * FluxCapacitor
-* *Add your name here! All contributions, big or small, are welcome! Just make a pull request!*
+* ***Add your name here!*** *All contributions, big or small, are welcome! Just make a pull request!*
 ### Code Style
 You can download my code style settings from the EditorConfig files located in each repository (source links above). For PRs to be merged, it would be nice if you could follow my code style settings! Also, please consider taking a look at the *TODO* section below, it would really be appreciated if someone helped me implement these features.
-### Testing
-This program was *only* tested on Windows 10. Possibly others could test on other operating systems in the future, but some of the OS-specific config must be changed.
+### Testing and OS Support
+This program was *only* tested on Windows 10 in my environment. Possibly others could test on other operating systems in the future, but some of the OS-specific config must be changed.
 ### TODO
 - [ ] Ability to set TTS audio to be spoken for images
 - [ ] Ability to narrate the text in screenshots instead of using text to speech (like a voice recorder)
 - [ ] Ability to change TTS voice
+- [ ] Revamped options GUI
+- [ ] Support for auto-generating videos for subreddits other than `r/AskReddit`.
+- [ ] Support the new Reddit experience
+- [ ] Make Reddit awards (gold, silver, etc.) display properly instead of removing them
+- [ ] Possibly support reading greentexts
 
 ## Open Source and Free Software
 *Thanks to the authors of all of these programs/APIs! They've really helped me develop RVM quickly and easily.*
@@ -82,3 +89,4 @@ This program was *only* tested on Windows 10. Possibly others could test on othe
 - [YouTube Data API](https://console.developers.google.com/apis/library/youtube.googleapis.com?id=125bab65-cfb6-4f25-9826-4dcc309bc508) (Closed-source)
 - [FFmpeg and FFprobe](http://ffmpeg.org/) (Open-source)
 - [Jaffree](https://github.com/kokorin/Jaffree) (Open-source)
+- [Selenium WebDriver](https://www.selenium.dev/) (Open-source, specific browsers may not be open-source)
